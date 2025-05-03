@@ -51,7 +51,7 @@ export async function encryptData(data: Record<string, string>, password: string
   return btoa(String.fromCharCode(...result))
 }
 
-// Déchiffre des données avec un mot de passe
+// Améliorer la gestion des erreurs dans la fonction decryptData
 export async function decryptData(encryptedData: string, password: string): Promise<Record<string, string>> {
   try {
     // Convertir de base64 à Uint8Array
@@ -69,15 +69,24 @@ export async function decryptData(encryptedData: string, password: string): Prom
     // Dériver la clé à partir du mot de passe et du sel
     const key = await deriveKey(password, salt)
 
-    // Déchiffrer les données
-    const decryptedBuffer = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, encryptedBuffer)
+    try {
+      // Déchiffrer les données
+      const decryptedBuffer = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, encryptedBuffer)
 
-    // Convertir le buffer en chaîne JSON puis en objet
-    const decryptedText = new TextDecoder().decode(decryptedBuffer)
-    return JSON.parse(decryptedText)
+      // Convertir le buffer en chaîne JSON puis en objet
+      const decryptedText = new TextDecoder().decode(decryptedBuffer)
+      return JSON.parse(decryptedText)
+    } catch (decryptError) {
+      // Erreur spécifique au déchiffrement (mot de passe incorrect)
+      console.error('Erreur de déchiffrement:', decryptError)
+      throw new Error('Mot de passe incorrect')
+    }
   } catch (error) {
     console.error('Erreur lors du déchiffrement:', error)
-    throw new Error('Mot de passe incorrect ou données corrompues')
+    if (error instanceof Error && error.message === 'Mot de passe incorrect') {
+      throw error
+    }
+    throw new Error('Impossible de déchiffrer les données. Format invalide ou données corrompues.')
   }
 }
 

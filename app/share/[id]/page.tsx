@@ -9,9 +9,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { toast } from '@/components/ui/use-toast'
 import { getSecret } from '@/app/actions/sharing'
 import { decryptData, isCryptoAvailable } from '@/lib/crypto'
+import { cn } from '@/lib/utils'
 
 interface SecretField {
   key: string
@@ -40,6 +40,8 @@ export default function SharePage() {
   const [showPasswordFields, setShowPasswordFields] = useState<Record<string, boolean>>({})
   const [secretName, setSecretName] = useState<string | null>(null)
   const [isDecrypting, setIsDecrypting] = useState(false)
+  // Ajouter un nouvel état pour suivre les erreurs de déchiffrement
+  const [decryptError, setDecryptError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchSecret()
@@ -79,11 +81,13 @@ export default function SharePage() {
     }
   }
 
-  // Déchiffrer les données avec le mot de passe fourni par l'utilisateur
+  // Modifier la fonction handleDecrypt pour mieux gérer les erreurs
   const handleDecrypt = async () => {
     if (!passphrase || !encryptedData) return
 
     setIsDecrypting(true)
+    setDecryptError(null) // Réinitialiser l'erreur précédente
+
     try {
       // Vérifier que l'API Web Crypto est disponible
       if (!isCryptoAvailable()) {
@@ -97,11 +101,7 @@ export default function SharePage() {
       processSecretContent(decryptedContent)
     } catch (error) {
       console.error('Erreur lors du déchiffrement:', error)
-      toast({
-        title: 'Erreur',
-        description: 'Mot de passe incorrect ou données corrompues',
-        variant: 'destructive',
-      })
+      setDecryptError('Mot de passe incorrect. Veuillez réessayer.')
     } finally {
       setIsDecrypting(false)
     }
@@ -195,7 +195,7 @@ export default function SharePage() {
     )
   }
 
-  // Afficher l'écran de saisie du mot de passe pour les secrets chiffrés côté client
+  // Modifier l'interface de saisie du mot de passe pour afficher l'erreur
   if (hasEncryptedData && !secretContent) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-6">
@@ -214,7 +214,7 @@ export default function SharePage() {
                   placeholder="Entrez le mot de passe"
                   value={passphrase}
                   onChange={(e) => setPassphrase(e.target.value)}
-                  className="pr-10"
+                  className={cn('pr-10', decryptError && 'border-red-500')}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       handleDecrypt()
@@ -226,6 +226,12 @@ export default function SharePage() {
                   <span className="sr-only">{showPassphrase ? 'Masquer' : 'Afficher'} le mot de passe</span>
                 </Button>
               </div>
+              {decryptError && (
+                <p className="text-sm text-red-500 mt-1 flex items-center">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  {decryptError}
+                </p>
+              )}
             </div>
 
             {isOneTimeUse && (
