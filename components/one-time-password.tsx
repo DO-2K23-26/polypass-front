@@ -1,43 +1,47 @@
-"use client"
+'use client'
 
-import type React from "react"
+import type React from 'react'
 
-import { useState } from "react"
-import { Copy, Check, Clock, Link, AlertCircle, Shield, Eye, EyeOff, Plus, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
+import { useState } from 'react'
+import { Copy, Check, Clock, Link, AlertCircle, Shield, Eye, EyeOff, Plus, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { toast } from '@/components/ui/use-toast'
+import { createSecret } from '@/app/actions/sharing'
+import { encryptData, isCryptoAvailable } from '@/lib/crypto'
 
 // Type pour les paires clé-valeur
 interface SecretField {
   key: string
   value: string
-  type: "text" | "password"
+  type: 'text' | 'password'
 }
 
 export function OneTimePassword() {
   const [secretFields, setSecretFields] = useState<SecretField[]>([
-    { key: "username", value: "", type: "text" },
-    { key: "password", value: "", type: "password" },
+    { key: 'username', value: '', type: 'text' },
+    { key: 'password', value: '', type: 'password' },
   ])
-  const [secretName, setSecretName] = useState("")
-  const [expirationHours, setExpirationHours] = useState("24")
+  const [secretName, setSecretName] = useState('')
+  const [expirationHours, setExpirationHours] = useState('24')
   const [isOneTimeUse, setIsOneTimeUse] = useState(true)
   const [isEncrypted, setIsEncrypted] = useState(false)
-  const [passphrase, setPassphrase] = useState("")
+  const [passphrase, setPassphrase] = useState('')
   const [showPassphrase, setShowPassphrase] = useState(false)
-  const [generatedLink, setGeneratedLink] = useState("")
+  const [generatedLink, setGeneratedLink] = useState('')
   const [copied, setCopied] = useState(false)
-  const [activeTab, setActiveTab] = useState("create")
-  const [newFieldKey, setNewFieldKey] = useState("")
-  const [newFieldType, setNewFieldType] = useState<"text" | "password">("text")
+  const [activeTab, setActiveTab] = useState('create')
+  const [newFieldKey, setNewFieldKey] = useState('')
+  const [newFieldType, setNewFieldType] = useState<'text' | 'password'>('text')
   const [showPassword, setShowPassword] = useState<Record<number, boolean>>({})
+  const [isLoading, setIsLoading] = useState(false)
   const [recentLinks, setRecentLinks] = useState<
     Array<{
       id: string
@@ -49,56 +53,139 @@ export function OneTimePassword() {
       url: string
       fieldCount: number
     }>
-  >([
-    {
-      id: "abc123",
-      name: "Accès serveur",
-      created: "2023-12-15",
-      expires: "2023-12-16",
-      isOneTime: true,
-      isEncrypted: true,
-      url: "https://polypass.example/share/abc123",
-      fieldCount: 3,
-    },
-    {
-      id: "def456",
-      name: "Wifi invités",
-      created: "2023-12-10",
-      expires: "2023-12-17",
-      isOneTime: false,
-      isEncrypted: false,
-      url: "https://polypass.example/share/def456",
-      fieldCount: 2,
-    },
-  ])
+  >([])
 
-  const generateLink = () => {
-    // Vérifier que tous les champs ont une valeur et une clé
-    const isValid = secretFields.every((field) => field.key.trim() && field.value.trim())
-    if (!isValid) return
+  // Convertir les champs en map pour l'API
+  const getContentMap = () => {
+    const contentMap: Record<string, string> = {}
+    secretFields.forEach((field) => {
+      if (field.key.trim() && field.value.trim()) {
+        contentMap[field.key] = field.value
+      }
+    })
 
-    // Simulation de l'appel API
-    const now = new Date()
-    const expirationDate = new Date(now.getTime() + Number.parseInt(expirationHours) * 60 * 60 * 1000)
-
-    const newId = Math.random().toString(36).substring(2, 8)
-    const newLink = `https://polypass.example/share/${newId}`
-
-    setGeneratedLink(newLink)
-
-    // Ajouter à l'historique
-    const newLinkEntry = {
-      id: newId,
-      name: secretName || "Secret sans nom",
-      created: now.toLocaleDateString(),
-      expires: expirationDate.toLocaleDateString(),
-      isOneTime: isOneTimeUse,
-      isEncrypted: isEncrypted,
-      url: newLink,
-      fieldCount: secretFields.length,
+    // Ajouter le nom du secret comme métadonnée si présent
+    if (secretName) {
+      contentMap['_name'] = secretName
     }
 
-    setRecentLinks([newLinkEntry, ...recentLinks])
+    // Ajouter une métadonnée pour indiquer que c'est un secret à usage unique
+    if (isOneTimeUse) {
+      contentMap['_one_time_use'] = 'true'
+    }
+
+    return contentMap
+  }
+
+  // Fonction pour créer un secret
+  const handleCreateSecret = async () => {
+    setIsLoading(true)
+
+    try {
+      // Vérifier que tous les champs ont une valeur et une clé
+      const isValid = secretFields.every((field) => field.key.trim() && field.value.trim())
+      if (!isValid) {
+        toast({
+          title: 'Erreur',
+          description: 'Tous les champs doivent avoir un nom et une valeur',
+          variant: 'destructive',
+        })
+        setIsLoading(false)
+        return
+      }
+
+      // Vérifier que le mot de passe est fourni si le secret est chiffré
+      if (isEncrypted && !passphrase) {
+        toast({
+          title: 'Erreur',
+          description: 'Veuillez fournir un mot de passe pour protéger le secret',
+          variant: 'destructive',
+        })
+        setIsLoading(false)
+        return
+      }
+
+      // Vérifier que l'API Web Crypto est disponible pour le chiffrement
+      if (isEncrypted && !isCryptoAvailable()) {
+        toast({
+          title: 'Erreur',
+          description: 'Votre navigateur ne prend pas en charge le chiffrement. Veuillez utiliser un navigateur plus récent.',
+          variant: 'destructive',
+        })
+        setIsLoading(false)
+        return
+      }
+
+      // Obtenir les données à envoyer
+      let contentMap = getContentMap()
+      let finalContent: Record<string, string>
+
+      // Si le secret est chiffré, chiffrer les données avec le mot de passe
+      if (isEncrypted && passphrase) {
+        // Chiffrer les données avec le mot de passe
+        const encryptedContent = await encryptData(contentMap, passphrase)
+
+        // Créer un nouvel objet avec seulement les données chiffrées
+        finalContent = {
+          _encrypted: encryptedContent,
+          _name: secretName, // Garder le nom en clair pour l'affichage
+        }
+      } else {
+        // Utiliser les données non chiffrées
+        finalContent = contentMap
+      }
+
+      // Calculer la date d'expiration en timestamp Unix (secondes)
+      const now = Math.floor(Date.now() / 1000)
+      const expirationSeconds = now + Number.parseInt(expirationHours) * 60 * 60
+
+      // Préparer la requête
+      const request = {
+        content: finalContent,
+        expiration: expirationSeconds,
+        is_encrypted: isEncrypted,
+        is_one_time_use: isOneTimeUse,
+      }
+
+      console.log('Envoi de la requête:', JSON.stringify(request, null, 2))
+
+      // Appeler le Server Action
+      const data = await createSecret(request)
+
+      // Générer le lien de partage
+      const baseUrl = window.location.origin
+      const newLink = `${baseUrl}/share/${data.id}`
+      setGeneratedLink(newLink)
+
+      // Ajouter à l'historique
+      const expirationDate = new Date(data.created_at * 1000 + Number.parseInt(expirationHours) * 60 * 60 * 1000)
+      const newLinkEntry = {
+        id: data.id,
+        name: secretName || 'Secret sans nom',
+        created: new Date(data.created_at * 1000).toLocaleDateString(),
+        expires: expirationDate.toLocaleDateString(),
+        isOneTime: isOneTimeUse,
+        isEncrypted: isEncrypted,
+        url: newLink,
+        fieldCount: secretFields.length,
+      }
+
+      setRecentLinks([newLinkEntry, ...recentLinks])
+
+      toast({
+        title: 'Succès',
+        description: 'Le lien de partage a été créé avec succès',
+      })
+    } catch (error) {
+      console.error('Erreur lors de la création du secret:', error)
+      toast({
+        title: 'Erreur',
+        description: error instanceof Error ? error.message : 'Impossible de créer le lien de partage. Veuillez réessayer.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const copyToClipboard = (text: string) => {
@@ -109,14 +196,14 @@ export function OneTimePassword() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    generateLink()
+    handleCreateSecret()
   }
 
   const addField = () => {
     if (newFieldKey.trim()) {
-      setSecretFields([...secretFields, { key: newFieldKey, value: "", type: newFieldType }])
-      setNewFieldKey("")
-      setNewFieldType("text")
+      setSecretFields([...secretFields, { key: newFieldKey, value: '', type: newFieldType }])
+      setNewFieldKey('')
+      setNewFieldType('text')
     }
   }
 
@@ -137,17 +224,6 @@ export function OneTimePassword() {
       ...prev,
       [index]: !prev[index],
     }))
-  }
-
-  // Convertir les champs en map pour l'API
-  const getContentMap = () => {
-    const contentMap: Record<string, string> = {}
-    secretFields.forEach((field) => {
-      if (field.key.trim() && field.value.trim()) {
-        contentMap[field.key] = field.value
-      }
-    })
-    return contentMap
   }
 
   return (
@@ -175,19 +251,14 @@ export function OneTimePassword() {
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="secretName">Nom du secret (optionnel)</Label>
-                      <Input
-                        id="secretName"
-                        placeholder="Ex: Accès serveur production"
-                        value={secretName}
-                        onChange={(e) => setSecretName(e.target.value)}
-                      />
+                      <Input id="secretName" placeholder="Ex: Accès serveur production" value={secretName} onChange={(e) => setSecretName(e.target.value)} />
                     </div>
 
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <Label>Informations à partager</Label>
                         <Badge variant="outline" className="ml-2">
-                          {secretFields.length} champ{secretFields.length > 1 ? "s" : ""}
+                          {secretFields.length} champ{secretFields.length > 1 ? 's' : ''}
                         </Badge>
                       </div>
 
@@ -196,33 +267,18 @@ export function OneTimePassword() {
                           <div className="flex items-center justify-between">
                             <Label htmlFor={`field-key-${index}`}>Nom du champ</Label>
                             {secretFields.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => removeField(index)}
-                              >
+                              <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeField(index)}>
                                 <Trash2 className="h-4 w-4" />
                                 <span className="sr-only">Supprimer le champ</span>
                               </Button>
                             )}
                           </div>
-                          <Input
-                            id={`field-key-${index}`}
-                            placeholder="Ex: Nom d'utilisateur"
-                            value={field.key}
-                            onChange={(e) => updateField(index, { key: e.target.value })}
-                            required
-                          />
+                          <Input id={`field-key-${index}`} placeholder="Ex: Nom d'utilisateur" value={field.key} onChange={(e) => updateField(index, { key: e.target.value })} required />
 
                           <div className="flex items-center justify-between mt-2">
                             <Label htmlFor={`field-value-${index}`}>Valeur</Label>
                             <div className="flex items-center">
-                              <Select
-                                value={field.type}
-                                onValueChange={(value) => updateField(index, { type: value as "text" | "password" })}
-                              >
+                              <Select value={field.type} onValueChange={(value) => updateField(index, { type: value as 'text' | 'password' })}>
                                 <SelectTrigger className="w-[110px] h-8">
                                   <SelectValue />
                                 </SelectTrigger>
@@ -236,25 +292,17 @@ export function OneTimePassword() {
                           <div className="relative">
                             <Input
                               id={`field-value-${index}`}
-                              type={field.type === "password" && !showPassword[index] ? "password" : "text"}
+                              type={field.type === 'password' && !showPassword[index] ? 'password' : 'text'}
                               placeholder="Valeur à partager"
                               value={field.value}
                               onChange={(e) => updateField(index, { value: e.target.value })}
-                              className={field.type === "password" ? "pr-10" : ""}
+                              className={field.type === 'password' ? 'pr-10' : ''}
                               required
                             />
-                            {field.type === "password" && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="absolute right-0 top-0 h-full"
-                                onClick={() => togglePasswordVisibility(index)}
-                              >
+                            {field.type === 'password' && (
+                              <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full" onClick={() => togglePasswordVisibility(index)}>
                                 {showPassword[index] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                <span className="sr-only">
-                                  {showPassword[index] ? "Masquer" : "Afficher"} le mot de passe
-                                </span>
+                                <span className="sr-only">{showPassword[index] ? 'Masquer' : 'Afficher'} le mot de passe</span>
                               </Button>
                             )}
                           </div>
@@ -264,17 +312,9 @@ export function OneTimePassword() {
                       <div className="flex items-end gap-2">
                         <div className="flex-1 space-y-2">
                           <Label htmlFor="newFieldKey">Ajouter un champ</Label>
-                          <Input
-                            id="newFieldKey"
-                            placeholder="Nom du champ"
-                            value={newFieldKey}
-                            onChange={(e) => setNewFieldKey(e.target.value)}
-                          />
+                          <Input id="newFieldKey" placeholder="Nom du champ" value={newFieldKey} onChange={(e) => setNewFieldKey(e.target.value)} />
                         </div>
-                        <Select
-                          value={newFieldType}
-                          onValueChange={(value) => setNewFieldType(value as "text" | "password")}
-                        >
+                        <Select value={newFieldType} onValueChange={(value) => setNewFieldType(value as 'text' | 'password')}>
                           <SelectTrigger className="w-[110px]">
                             <SelectValue />
                           </SelectTrigger>
@@ -327,37 +367,32 @@ export function OneTimePassword() {
                           <div className="relative">
                             <Input
                               id="passphrase"
-                              type={showPassphrase ? "text" : "password"}
+                              type={showPassphrase ? 'text' : 'password'}
                               placeholder="Entrez un mot de passe"
                               value={passphrase}
                               onChange={(e) => setPassphrase(e.target.value)}
                               className="pr-10"
                             />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="absolute right-0 top-0 h-full"
-                              onClick={() => setShowPassphrase(!showPassphrase)}
-                            >
+                            <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full" onClick={() => setShowPassphrase(!showPassphrase)}>
                               {showPassphrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              <span className="sr-only">{showPassphrase ? "Masquer" : "Afficher"} le mot de passe</span>
+                              <span className="sr-only">{showPassphrase ? 'Masquer' : 'Afficher'} le mot de passe</span>
                             </Button>
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            Le destinataire devra saisir ce mot de passe pour accéder au contenu.
-                          </p>
+                          <p className="text-xs text-muted-foreground">Le destinataire devra saisir ce mot de passe pour accéder au contenu.</p>
                         </div>
                       )}
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={!secretFields.every((field) => field.key.trim() && field.value.trim())}
-                    >
-                      Générer un lien de partage
+                    <Button type="submit" className="w-full" disabled={isLoading || !secretFields.every((field) => field.key.trim() && field.value.trim())}>
+                      {isLoading ? (
+                        <>
+                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          Création en cours...
+                        </>
+                      ) : (
+                        'Générer un lien de partage'
+                      )}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -374,21 +409,16 @@ export function OneTimePassword() {
                   <CardContent className="space-y-4">
                     <div className="relative">
                       <Input value={generatedLink} readOnly className="pr-20 font-mono text-sm" />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-1 top-1/2 -translate-y-1/2"
-                        onClick={() => copyToClipboard(generatedLink)}
-                      >
+                      <Button variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={() => copyToClipboard(generatedLink)}>
                         {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-                        {copied ? "Copié" : "Copier"}
+                        {copied ? 'Copié' : 'Copier'}
                       </Button>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="outline" className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        Expire dans {expirationHours} heure{Number.parseInt(expirationHours) > 1 ? "s" : ""}
+                        Expire dans {expirationHours} heure{Number.parseInt(expirationHours) > 1 ? 's' : ''}
                       </Badge>
                       {isOneTimeUse && (
                         <Badge variant="outline" className="flex items-center gap-1 bg-amber-100 text-amber-800">
@@ -404,7 +434,7 @@ export function OneTimePassword() {
                       )}
                       <Badge variant="outline" className="flex items-center gap-1">
                         <Plus className="h-3 w-3" />
-                        {secretFields.length} champ{secretFields.length > 1 ? "s" : ""}
+                        {secretFields.length} champ{secretFields.length > 1 ? 's' : ''}
                       </Badge>
                     </div>
 
@@ -415,23 +445,23 @@ export function OneTimePassword() {
                         {isOneTimeUse
                           ? "Ce lien ne pourra être consulté qu'une seule fois. Une fois ouvert, le secret sera détruit."
                           : "Ce lien peut être consulté plusieurs fois jusqu'à son expiration."}
-                        {isEncrypted && " Le destinataire devra saisir le mot de passe pour accéder au contenu."}
+                        {isEncrypted && ' Le destinataire devra saisir le mot de passe pour accéder au contenu.'}
                       </AlertDescription>
                     </Alert>
                   </CardContent>
                   <CardFooter className="flex justify-between">
-                    <Button variant="outline" onClick={() => setActiveTab("history")}>
+                    <Button variant="outline" onClick={() => setActiveTab('history')}>
                       Voir l'historique
                     </Button>
                     <Button
                       onClick={() => {
                         setSecretFields([
-                          { key: "username", value: "", type: "text" },
-                          { key: "password", value: "", type: "password" },
+                          { key: 'username', value: '', type: 'text' },
+                          { key: 'password', value: '', type: 'password' },
                         ])
-                        setSecretName("")
-                        setGeneratedLink("")
-                        setPassphrase("")
+                        setSecretName('')
+                        setGeneratedLink('')
+                        setPassphrase('')
                       }}
                     >
                       Créer un nouveau lien
@@ -452,9 +482,7 @@ export function OneTimePassword() {
                         </div>
                         <div>
                           <h4 className="text-sm font-medium">Sécurisé</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Les secrets sont chiffrés et stockés de manière sécurisée.
-                          </p>
+                          <p className="text-sm text-muted-foreground">Les secrets sont chiffrés et stockés de manière sécurisée.</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-2">
@@ -463,9 +491,7 @@ export function OneTimePassword() {
                         </div>
                         <div>
                           <h4 className="text-sm font-medium">Usage unique</h4>
-                          <p className="text-sm text-muted-foreground">
-                            L'option "burn after read" détruit le secret après sa première consultation.
-                          </p>
+                          <p className="text-sm text-muted-foreground">L'option "burn after read" détruit le secret après sa première consultation.</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-2">
@@ -474,9 +500,7 @@ export function OneTimePassword() {
                         </div>
                         <div>
                           <h4 className="text-sm font-medium">Expiration automatique</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Tous les secrets expirent automatiquement après la durée définie.
-                          </p>
+                          <p className="text-sm text-muted-foreground">Tous les secrets expirent automatiquement après la durée définie.</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-2">
@@ -485,9 +509,7 @@ export function OneTimePassword() {
                         </div>
                         <div>
                           <h4 className="text-sm font-medium">Lien de partage</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Partagez simplement le lien généré avec le destinataire.
-                          </p>
+                          <p className="text-sm text-muted-foreground">Partagez simplement le lien généré avec le destinataire.</p>
                         </div>
                       </div>
                     </div>
@@ -506,9 +528,7 @@ export function OneTimePassword() {
                     <li className="text-sm">Transmettre un mot de passe Wi-Fi à des invités</li>
                     <li className="text-sm">Envoyer des informations d'accès à un serveur</li>
                     <li className="text-sm">Partager des clés API ou des tokens d'authentification</li>
-                    <li className="text-sm">
-                      Transmettre des informations confidentielles qui ne doivent être lues qu'une fois
-                    </li>
+                    <li className="text-sm">Transmettre des informations confidentielles qui ne doivent être lues qu'une fois</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -528,18 +548,13 @@ export function OneTimePassword() {
               ) : (
                 <div className="space-y-4">
                   {recentLinks.map((link) => (
-                    <div
-                      key={link.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-2"
-                    >
+                    <div key={link.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-2">
                       <div>
                         <div className="font-medium">{link.name}</div>
                         <div className="text-xs text-muted-foreground">
                           Créé le {link.created} • Expire le {link.expires}
                         </div>
-                        <div className="text-xs font-mono text-muted-foreground mt-1 truncate max-w-[300px]">
-                          {link.url}
-                        </div>
+                        <div className="text-xs font-mono text-muted-foreground mt-1 truncate max-w-[300px]">{link.url}</div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0">
                         <div className="flex flex-wrap gap-1">
@@ -554,15 +569,10 @@ export function OneTimePassword() {
                             </Badge>
                           )}
                           <Badge variant="outline">
-                            {link.fieldCount} champ{link.fieldCount > 1 ? "s" : ""}
+                            {link.fieldCount} champ{link.fieldCount > 1 ? 's' : ''}
                           </Badge>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="ml-auto"
-                          onClick={() => copyToClipboard(link.url)}
-                        >
+                        <Button variant="outline" size="sm" className="ml-auto" onClick={() => copyToClipboard(link.url)}>
                           <Copy className="h-3 w-3 mr-1" />
                           Copier
                         </Button>
