@@ -2,8 +2,8 @@
 
 import type React from 'react'
 
-import { useState } from 'react'
-import { Copy, Check, Clock, Link, AlertCircle, Shield, Eye, EyeOff, Plus, Trash2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Copy, Check, Clock, Link, AlertCircle, Shield, Eye, EyeOff, Plus, Trash2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -14,7 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
-import { createSecret } from '@/app/actions/sharing'
+import { createSecret, getHistory, type HistorySecret } from '@/app/actions/sharing'
 import { encryptData, isCryptoAvailable } from '@/lib/crypto'
 
 // Type pour les paires clé-valeur
@@ -42,18 +42,33 @@ export function OneTimePassword() {
   const [newFieldType, setNewFieldType] = useState<'text' | 'password'>('text')
   const [showPassword, setShowPassword] = useState<Record<number, boolean>>({})
   const [isLoading, setIsLoading] = useState(false)
-  const [recentLinks, setRecentLinks] = useState<
-    Array<{
-      id: string
-      name: string
-      created: string
-      expires: string
-      isOneTime: boolean
-      isEncrypted: boolean
-      url: string
-      fieldCount: number
-    }>
-  >([])
+  const [historySecrets, setHistorySecrets] = useState<HistorySecret[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+
+  // Charger l'historique quand on passe à l'onglet historique
+  useEffect(() => {
+    if (activeTab === 'history') {
+      loadHistory()
+    }
+  }, [activeTab])
+
+  // Fonction pour charger l'historique depuis l'API
+  const loadHistory = async () => {
+    setIsLoadingHistory(true)
+    try {
+      const history = await getHistory()
+      setHistorySecrets(history)
+    } catch (error) {
+      console.error("Erreur lors du chargement de l'historique:", error)
+      toast({
+        title: 'Erreur',
+        description: "Impossible de charger l'historique des secrets",
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoadingHistory(false)
+    }
+  }
 
   // Convertir les champs en map pour l'API
   const getContentMap = () => {
@@ -117,7 +132,7 @@ export function OneTimePassword() {
       }
 
       // Obtenir les données à envoyer
-      let contentMap = getContentMap()
+      const contentMap = getContentMap()
       let finalContent: Record<string, string>
 
       // Si le secret est chiffré, chiffrer les données avec le mot de passe
@@ -157,25 +172,15 @@ export function OneTimePassword() {
       const newLink = `${baseUrl}/share/${data.id}`
       setGeneratedLink(newLink)
 
-      // Ajouter à l'historique
-      const expirationDate = new Date(data.created_at * 1000 + Number.parseInt(expirationHours) * 60 * 60 * 1000)
-      const newLinkEntry = {
-        id: data.id,
-        name: secretName || 'Secret sans nom',
-        created: new Date(data.created_at * 1000).toLocaleDateString(),
-        expires: expirationDate.toLocaleDateString(),
-        isOneTime: isOneTimeUse,
-        isEncrypted: isEncrypted,
-        url: newLink,
-        fieldCount: secretFields.length,
-      }
-
-      setRecentLinks([newLinkEntry, ...recentLinks])
-
       toast({
         title: 'Succès',
         description: 'Le lien de partage a été créé avec succès',
       })
+
+      // Recharger l'historique si on est sur l'onglet historique
+      if (activeTab === 'history') {
+        loadHistory()
+      }
     } catch (error) {
       console.error('Erreur lors de la création du secret:', error)
       toast({
@@ -226,6 +231,29 @@ export function OneTimePassword() {
     }))
   }
 
+  // Fonction pour formater les dates
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  // Fonction pour vérifier si un secret a expiré
+  const isExpired = (expiration: number) => {
+    return Date.now() / 1000 > expiration
+  }
+
+  // Fonction pour formater la taille du contenu
+  const formatContentSize = (size: number) => {
+    if (size < 1024) return `${size} B`
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`
+  }
+
   return (
     <div className="space-y-6 p-6">
       <div>
@@ -234,10 +262,18 @@ export function OneTimePassword() {
       </div>
 
       <Tabs defaultValue="create" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="create">Créer un lien</TabsTrigger>
-          <TabsTrigger value="history">Historique</TabsTrigger>
-        </TabsList>
+        <div className="flex justify-between items-center">
+          <TabsList>
+            <TabsTrigger value="create">Créer un lien</TabsTrigger>
+            <TabsTrigger value="history">Historique</TabsTrigger>
+          </TabsList>
+          {activeTab === 'history' && (
+            <Button variant="outline" onClick={loadHistory} disabled={isLoadingHistory}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${isLoadingHistory ? 'animate-spin' : ''}`} />
+              Actualiser
+            </Button>
+          )}
+        </div>
 
         <TabsContent value="create" className="space-y-6 mt-6">
           <div className="grid gap-6 md:grid-cols-2">
@@ -539,46 +575,54 @@ export function OneTimePassword() {
         <TabsContent value="history" className="space-y-6 mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Historique des liens partagés</CardTitle>
-              <CardDescription>Liste des liens de partage que vous avez créés</CardDescription>
+              <CardTitle>Historique des secrets partagés</CardTitle>
+              <CardDescription>Liste des secrets que vous avez créés</CardDescription>
             </CardHeader>
             <CardContent>
-              {recentLinks.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground">Aucun lien de partage créé</div>
+              {isLoadingHistory ? (
+                <div className="flex justify-center py-6">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : historySecrets.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">Aucun secret créé</div>
               ) : (
                 <div className="space-y-4">
-                  {recentLinks.map((link) => (
-                    <div key={link.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-2">
-                      <div>
-                        <div className="font-medium">{link.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          Créé le {link.created} • Expire le {link.expires}
+                  {historySecrets.map((secret) => {
+                    const expired = isExpired(secret.expiration)
+                    const baseUrl = window.location.origin
+                    const secretUrl = `${baseUrl}/share/${secret.id}`
+
+                    return (
+                      <div key={secret.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-2 ${expired ? 'opacity-60' : ''}`}>
+                        <div>
+                          <div className="font-medium">{secret.name || 'Secret sans nom'}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Créé le {formatDate(secret.created_at)} • Expire le {formatDate(secret.expiration)}
+                          </div>
+                          <div className="text-xs font-mono text-muted-foreground mt-1 truncate max-w-[300px]">{secretUrl}</div>
                         </div>
-                        <div className="text-xs font-mono text-muted-foreground mt-1 truncate max-w-[300px]">{link.url}</div>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0">
-                        <div className="flex flex-wrap gap-1">
-                          {link.isOneTime && (
-                            <Badge variant="outline" className="bg-amber-100 text-amber-800">
-                              Usage unique
-                            </Badge>
-                          )}
-                          {link.isEncrypted && (
-                            <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                              Protégé
-                            </Badge>
-                          )}
-                          <Badge variant="outline">
-                            {link.fieldCount} champ{link.fieldCount > 1 ? 's' : ''}
-                          </Badge>
+                        <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0">
+                          <div className="flex flex-wrap gap-1">
+                            {expired && (
+                              <Badge variant="outline" className="bg-red-100 text-red-800">
+                                Expiré
+                              </Badge>
+                            )}
+                            {secret.is_one_time_use && (
+                              <Badge variant="outline" className="bg-amber-100 text-amber-800">
+                                Usage unique
+                              </Badge>
+                            )}
+                            <Badge variant="outline">{formatContentSize(secret.content_size)}</Badge>
+                          </div>
+                          <Button variant="outline" size="sm" className="ml-auto" onClick={() => copyToClipboard(secretUrl)} disabled={expired}>
+                            <Copy className="h-3 w-3 mr-1" />
+                            Copier
+                          </Button>
                         </div>
-                        <Button variant="outline" size="sm" className="ml-auto" onClick={() => copyToClipboard(link.url)}>
-                          <Copy className="h-3 w-3 mr-1" />
-                          Copier
-                        </Button>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </CardContent>
