@@ -19,6 +19,15 @@ export interface GetSecretResponse {
   content: Record<string, string>
 }
 
+export interface HistorySecret {
+  id: string
+  created_at: number
+  expiration: number
+  content_size: number
+  is_one_time_use: boolean
+  name: string
+}
+
 // Créer un nouveau secret
 export async function createSecret(request: PostSecretRequest): Promise<PostSecretResponse> {
   const apiUrl = process.env.SHARING_API
@@ -121,6 +130,42 @@ export async function decryptSecret(id: string, passphrase: string): Promise<Get
       const errorText = await response.text()
       console.error('Erreur API:', response.status, errorText)
       throw new Error(`Erreur lors du déchiffrement: ${response.statusText}`)
+    }
+
+    return response.json()
+  } catch (error) {
+    console.error("Erreur lors de l'appel à l'API:", error)
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error('Impossible de communiquer avec le serveur de partage')
+  }
+}
+
+// Récupérer l'historique des secrets
+export async function getHistory(): Promise<HistorySecret[]> {
+  const apiUrl = process.env.SHARING_API
+
+  if (!apiUrl) {
+    console.error("Variable d'environnement SHARING_API non définie")
+    throw new Error('Configuration API manquante')
+  }
+
+  console.log(`Récupération de l'historique depuis ${apiUrl}/history`)
+
+  try {
+    const response = await fetch(`${apiUrl}/history`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Erreur API:', response.status, errorText)
+      throw new Error(`Erreur lors de la récupération de l'historique: ${response.statusText}`)
     }
 
     return response.json()
