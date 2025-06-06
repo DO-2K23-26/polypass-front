@@ -10,6 +10,7 @@ import { MainNav } from '@/components/main-nav'
 import { UserNav } from '@/components/user-nav'
 import { PasswordGenerator } from '@/components/password-generator'
 import { OneTimePassword } from '@/components/one-time-password'
+import { EmailMonitoring } from '@/components/email-monitoring'
 
 export function PasswordDashboard() {
   const [activeTab, setActiveTab] = useState('passwords')
@@ -42,6 +43,9 @@ export function PasswordDashboard() {
                   <TabsTrigger value="security" className="justify-start w-full px-4 py-2 text-sm font-medium border-0 data-[state=active]:border-0">
                     Sécurité
                   </TabsTrigger>
+                  <TabsTrigger value="email-monitoring" className="justify-start w-full px-4 py-2 text-sm font-medium border-0 data-[state=active]:border-0">
+                    Surveillance des emails
+                  </TabsTrigger>
                   <TabsTrigger value="sharing" className="justify-start w-full px-4 py-2 text-sm font-medium border-0 data-[state=active]:border-0">
                     Partage
                   </TabsTrigger>
@@ -63,6 +67,9 @@ export function PasswordDashboard() {
               </TabsContent>
               <TabsContent value="security" className="mt-0">
                 <SecurityDashboard />
+              </TabsContent>
+              <TabsContent value="email-monitoring" className="mt-0">
+                <EmailMonitoring />
               </TabsContent>
               <TabsContent value="sharing" className="mt-0">
                 <SharingCenter />
