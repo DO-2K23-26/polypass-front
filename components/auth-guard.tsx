@@ -16,17 +16,21 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   const pathname = usePathname() // Get current path
 
-  // Skip guard for /auth/callback
-  if (pathname === '/auth/callback') {
-    return <>{children}</>
-  }
-
   useEffect(() => {
+    // Skip guard for /auth/callback
+    if (pathname === '/auth/callback') {
+      return
+    }
     // Si pas d'access token, rediriger vers l'identity provider
     if (!accessToken) {
       initiateOIDCLogin()
     }
-  }, [accessToken])
+  }, [accessToken, pathname])
+
+  // Skip guard for /auth/callback
+  if (pathname === '/auth/callback') {
+    return <>{children}</>
+  }
 
   // Afficher un loader pendant la redirection
   if (!isAuthenticated || !accessToken) {
