@@ -72,22 +72,17 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
-resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
-    extraEnv:
-      - name: SHARING_API
-        value: "http://localhost:3333/sharing"
-      - name: NEXT_PUBLIC_OIDC_PROVIDER_URL
-        value: "https://auth.polypass.umontpelier.fr"
-      - name: NEXT_PUBLIC_OIDC_CLIENT_ID
-        value: "polypass"
-      - name: NEXT_PUBLIC_OIDC_REDIRECT_URI
-        value: "https://polypass.umontpelier.fr/auth/callback"
+resources: {}
+  
+extraEnv:
+  - name: SHARING_API
+    value: "http://sharing.polypass.umontpelier.fr"
+  - name: NEXT_PUBLIC_OIDC_PROVIDER_URL
+    value: "https://auth.polypass.umontpelier.fr"
+  - name: NEXT_PUBLIC_OIDC_CLIENT_ID
+    value: "polypass"
+  - name: NEXT_PUBLIC_OIDC_REDIRECT_URI
+    value: "https://polypass.umontpelier.fr/auth/callback"
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
