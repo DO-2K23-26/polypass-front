@@ -5,6 +5,7 @@ import type React from 'react'
 import { useEffect } from 'react'
 import { useAuthStore } from '@/lib/auth'
 import { initiateOIDCLogin } from '@/lib/auth'
+import { usePathname } from 'next/navigation'
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -12,6 +13,13 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { isAuthenticated, accessToken } = useAuthStore()
+
+  const pathname = usePathname() // Get current path
+
+  // Skip guard for /auth/callback
+  if (pathname === '/auth/callback') {
+    return <>{children}</>
+  }
 
   useEffect(() => {
     // Si pas d'access token, rediriger vers l'identity provider
