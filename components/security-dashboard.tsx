@@ -15,12 +15,23 @@ export function SecurityDashboard() {
   const [securityScore, setSecurityScore] = useState(0)
   const [lastScan, setLastScan] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [metrics, setMetrics] = useState<SecurityMetrics>({
-    weakPasswords: {},
-    strongPasswords: {},
-    reusedPasswords: {},
-    oldPasswords: {},
-    breachedPasswords: {},
+  const [metrics, setMetrics] = useState<SecurityMetrics>(() => {
+    // Récupérer les métriques du localStorage au chargement initial
+    if (typeof window !== 'undefined') {
+      const savedMetrics = localStorage.getItem('securityMetrics')
+      const savedLastScan = localStorage.getItem('lastSecurityScan')
+      if (savedMetrics && savedLastScan) {
+        setLastScan(savedLastScan)
+        return JSON.parse(savedMetrics)
+      }
+    }
+    return {
+      weakPasswords: {},
+      strongPasswords: {},
+      reusedPasswords: {},
+      oldPasswords: {},
+      breachedPasswords: {},
+    }
   })
 
   const { credentials, isLoading: isLoadingCredentials } = useCredentials()
@@ -35,7 +46,13 @@ export function SecurityDashboard() {
       setIsAnalyzing(true)
       const result = await analyzePasswords(credentials)
       setMetrics(result)
-      setLastScan(new Date().toISOString())
+      const scanTime = new Date().toISOString()
+      setLastScan(scanTime)
+      
+      // Sauvegarder les métriques et le timestamp dans le localStorage
+      localStorage.setItem('securityMetrics', JSON.stringify(result))
+      localStorage.setItem('lastSecurityScan', scanTime)
+      
       toast.success("Analyse de sécurité terminée")
     } catch (error) {
       console.error("Erreur lors de l'analyse:", error)
