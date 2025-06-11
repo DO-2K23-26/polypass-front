@@ -1,5 +1,7 @@
 'use server'
 
+import { apiClient } from '@/lib/api-client'
+
 // Types pour l'API
 export interface PostSecretRequest {
   content: Record<string, string>
@@ -41,7 +43,7 @@ export async function createSecret(request: PostSecretRequest): Promise<PostSecr
   console.log('Données envoyées:', JSON.stringify(request, null, 2))
 
   try {
-    const response = await fetch(apiUrl, {
+    const response = await apiClient.fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -75,7 +77,7 @@ export async function getSecret(id: string): Promise<GetSecretResponse> {
   console.log(`Récupération du secret ${id} depuis ${apiUrl}/${id}`)
 
   try {
-    const response = await fetch(`${apiUrl}/${id}`, {
+    const response = await apiClient.fetch(`${apiUrl}/${id}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -114,7 +116,7 @@ export async function decryptSecret(id: string, passphrase: string): Promise<Get
   console.log(`Déchiffrement du secret ${id}`)
 
   try {
-    const response = await fetch(`${apiUrl}/${id}`, {
+    const response = await apiClient.fetch(`${apiUrl}/${id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -154,7 +156,7 @@ export async function getHistory(): Promise<HistorySecret[]> {
   console.log(`Récupération de l'historique depuis ${apiUrl}/history`)
 
   try {
-    const response = await fetch(`${apiUrl}/history`, {
+    const response = await apiClient.fetch(`${apiUrl}/history`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
