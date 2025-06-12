@@ -1,6 +1,6 @@
 'use client'
 
-import { getFolders } from "@/lib/api/folders";
+import { createFolder, getFolders } from "@/lib/api/folders";
 import { Credential } from "@/types/credential";
 import { Folder } from "@/types/folder";
 import { Tag } from "@/types/tag";
@@ -12,7 +12,10 @@ export interface OrganizationProviderProps {
     credentials: Credential[];
     selectedFolderId?: string;
     loadings: OrganizationLoadings;
-    updateSelectedFolderId: (folderId: string) => void;
+    onCreateFolder: (folderName: string, parentId: string | null) => void;
+    onUpdateFolder: (id: string, data: Partial<Folder>) => void;
+    onDeleteFolder: (id: string) => void;
+    updateSelectedFolderId: (folderId: string | null) => void;
     reloadData: () => void;
 }
 
@@ -32,7 +35,10 @@ const OrganizationContext = createContext<OrganizationProviderProps>({
         tagsLoading: false,
         credentialsLoading: false,
     },
-    updateSelectedFolderId: () => {},
+    onCreateFolder: (folderName: string, parentId: string | null) => {},
+    onUpdateFolder: (id: string, data: Partial<Folder>) => {},
+    onDeleteFolder: (id: string) => {},
+    updateSelectedFolderId: (folderId: string | null) => {},
     reloadData: () => {},
 });
 
@@ -63,14 +69,41 @@ export const OrganizationProvider = ({ children }: any) => {
             setLoadings((prev) => ({ ...prev, foldersLoading: false }));
         }
     }
-    const updateSelectedFolderId = (folderId: string) => {
-        setSelectedFolderId(folderId);
+    const updateSelectedFolderId = (folderId: string | null) => {
+        setSelectedFolderId(folderId ?? undefined);
         console.log(`Selected folder ID updated to: ${folderId}`);
     }
 
     useEffect(() => {
         loadData()
     }, [])
+
+    const onCreateFolder = async (folderName: string, parentId: string | null) => {
+        try {
+            const newFolder = await createFolder({ name: folderName, parent_id: parentId, description: null, icon: null, created_by: "Baptiste" });
+            setFolders((prev) => [...prev, newFolder]);
+        } catch (error) {
+            console.error("Error creating folder:", error);
+        }
+    };
+    const onUpdateFolder = async (id: string, data: Partial<Folder>) => {
+        try {
+            // const updatedFolder = await updateFolder(id, data);
+            // setFolders((prev) =>
+            //     prev.map((folder) => (folder.id === id ? updatedFolder : folder))
+            // );
+        } catch (error) {
+            console.error("Error updating folder:", error);
+        }
+    };
+    const onDeleteFolder = async (id: string) => {
+        try {
+            // await deleteFolder(id);
+            // setFolders((prev) => prev.filter((folder) => folder.id !== id));
+        } catch (error) {
+            console.error("Error deleting folder:", error);
+        }
+    };
 
     return (
         <OrganizationContext.Provider
@@ -80,6 +113,9 @@ export const OrganizationProvider = ({ children }: any) => {
                 credentials,
                 selectedFolderId,
                 loadings,
+                onCreateFolder,
+                onUpdateFolder,
+                onDeleteFolder,
                 updateSelectedFolderId,
                 reloadData: loadData,
             }}

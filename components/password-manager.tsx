@@ -257,13 +257,7 @@ export function PasswordManager() {
             </CardHeader>
             <CardContent className="px-4 py-2">
               <ScrollArea className="h-[300px]">
-                <FolderTree
-                  folders={folders}
-                  isLoading={loadings.foldersLoading}
-                  selectedFolderId={selectedFolderId}
-                  onSelectFolder={setSelectedFolderId}
-                  onAddFolder={handleAddFolder}
-                />
+                <FolderTree />
               </ScrollArea>
             </CardContent>
           </Card>

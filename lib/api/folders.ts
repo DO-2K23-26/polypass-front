@@ -1,4 +1,4 @@
-import { Folder, GetFoldersResponse } from '@/types/folder'
+import { Folder, GetFoldersResponse, PostFolderRequest, PostFolderResponse } from '@/types/folder'
 
 export async function getFolders(userId?: string, page?: number, limit?: number): Promise<Folder[]> {
   const baseUrl = process.env.NEXT_PUBLIC_ORGANIZATION_URL || 'http://localhost:8000'
@@ -35,17 +35,28 @@ export async function getFolders(userId?: string, page?: number, limit?: number)
   }
 }
 
-export async function createFolder(data: Partial<Folder>): Promise<Folder> {
+export async function createFolder(data: PostFolderRequest): Promise<Folder> {
   const baseUrl = process.env.NEXT_PUBLIC_ORGANIZATION_URL || 'http://localhost:3001'
   const response = await fetch(`${baseUrl}/folders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
+
   if (!response.ok) {
     throw new Error('Erreur lors de la création du dossier')
   }
-  return await response.json()
+
+  const responseData: PostFolderResponse = await response.json()
+
+  return {
+    id: responseData.Id,
+    name: responseData.Name,
+    description: responseData.Description || null,
+    icon: responseData.Icon || null,
+    parentId: responseData.ParentID || null,
+    createdBy: responseData.CreatedBy || undefined,
+  }
 }
 
 export async function updateFolder(id: string, data: Partial<Folder>): Promise<Folder> {

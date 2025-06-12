@@ -6,17 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import type { FolderItem } from "@/components/password-manager"
+import useOrganization from "@/hooks/use-organization"
 
-interface FolderTreeProps {
-  folders: FolderItem[]
-  isLoading: boolean
-  selectedFolderId: string | null
-  onSelectFolder: (folderId: string | null) => void
-  onAddFolder: (name: string, parentId: string | null) => void
-  className?: string
-}
+export function FolderTree() {
+  const { folders, selectedFolderId, loadings, onCreateFolder, updateSelectedFolderId } = useOrganization()
 
-export function FolderTree({ folders, isLoading, selectedFolderId, onSelectFolder, onAddFolder, className }: FolderTreeProps) {
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({})
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null)
   const [newFolderName, setNewFolderName] = useState("")
@@ -40,9 +34,8 @@ export function FolderTree({ folders, isLoading, selectedFolderId, onSelectFolde
 
   const handleAddFolder = () => {
     if (newFolderName.trim()) {
-      onAddFolder(newFolderName.trim(), newFolderParentId)
+      onCreateFolder(newFolderName.trim(), newFolderParentId)
       setNewFolderName("")
-      setNewFolderParentId(null)
     }
   }
 
@@ -68,7 +61,7 @@ export function FolderTree({ folders, isLoading, selectedFolderId, onSelectFolde
           >
             {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
           </button>
-          <button type="button" className="flex items-center gap-2 flex-1" onClick={() => onSelectFolder(folder.id)}>
+          <button type="button" className="flex items-center gap-2 flex-1" onClick={() => updateSelectedFolderId(folder.id)}>
             {folder.shared ? (
               <Users className="h-4 w-4 text-blue-500" />
             ) : isExpanded ? (
@@ -120,14 +113,14 @@ export function FolderTree({ folders, isLoading, selectedFolderId, onSelectFolde
   }
 
   return (
-    <div className={cn("space-y-1", { 'flex flex-col justify-between h-[300px]': rootFolders.length === 0 }, className)}>
+    <div className={cn("space-y-1", { 'flex flex-col justify-between h-[300px]': rootFolders.length === 0 })}>
       <button
         type="button"
         className={cn(
           "flex items-center gap-2 w-full py-1 px-2 rounded-md text-sm transition-colors",
           selectedFolderId === null ? "bg-primary text-primary-foreground" : "hover:bg-muted",
         )}
-        onClick={() => onSelectFolder(null)}
+        onClick={() => updateSelectedFolderId(null)}
       >
         <Folder className="h-4 w-4 text-muted-foreground" />
         <span>Tous les mots de passe</span>
@@ -135,7 +128,7 @@ export function FolderTree({ folders, isLoading, selectedFolderId, onSelectFolde
 
       {rootFolders.map((folder) => renderFolder(folder))}
 
-      {rootFolders.length === 0 && !isLoading && (
+      {rootFolders.length === 0 && !loadings.foldersLoading && (
         <p className="text-center text-muted-foreground">Aucun dossier trouvé</p>
       )}
 
