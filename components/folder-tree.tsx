@@ -92,7 +92,7 @@ export function FolderTree() {
         )}
 
         {newFolderParentId === folder.id && (
-          <div className="flex items-center gap-2 mt-1 ml-8">
+          <div className="flex flex-col mt-1 ml-8">
             <Input
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
@@ -104,12 +104,14 @@ export function FolderTree() {
                 if (e.key === "Escape") setNewFolderParentId(null)
               }}
             />
-            <Button type="button" variant="outline" size="sm" className="h-7" onClick={handleAddFolder}>
-              Ajouter
-            </Button>
-            <Button type="button" variant="ghost" size="sm" className="h-7" onClick={() => setNewFolderParentId(null)}>
-              Annuler
-            </Button>
+            <div className="flex items-center gap-2 justify-between mt-1">
+              <Button type="button" variant="ghost" size="sm" className="h-7" onClick={() => setNewFolderParentId(null)}>
+                Annuler
+              </Button>
+              <Button type="button" variant="outline" size="sm" className="h-7" onClick={handleAddFolder}>
+                Ajouter
+              </Button>
+            </div>
           </div>
         )}
       </div>
