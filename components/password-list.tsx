@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Copy, Eye, EyeOff, MoreHorizontal, FileText, AlertTriangle, RefreshCw, Link2, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,19 +37,40 @@ export function PasswordList({ passwords, folders }: PasswordListProps) {
   const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({})
   const [selectedPassword, setSelectedPassword] = useState<PasswordEntry | null>(null)
   const [showShareDialog, setShowShareDialog] = useState(false)
+  const [passwordUsages, setPasswordUsages] = useState<Record<string, number>>({})
+  const [isLoadingUsages, setIsLoadingUsages] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   
 
- const togglePasswordVisibility = (id: string) => {
+ const togglePasswordVisibility = async (id: string) => {
     setRevealedPasswords((prev) => ({
       ...prev,
       [id]: !prev[id],
     }))
-    usePassword(id)
+    try {
+      await usePassword(id)
+      // Mettre à jour le compteur local
+      setPasswordUsages(prev => ({
+        ...prev,
+        [id]: (prev[id] || 0) + 1
+      }))
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du compteur:', error)
+    }
   }
 
-  const copyToClipboard = (text: string, idPassword: string) => {
-    navigator.clipboard.writeText(text)
-    usePassword(idPassword)
+  const copyToClipboard = async (text: string, idPassword: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      await usePassword(idPassword)
+      // Mettre à jour le compteur local
+      setPasswordUsages(prev => ({
+        ...prev,
+        [idPassword]: (prev[idPassword] || 0) + 1
+      }))
+    } catch (error) {
+      console.error('Erreur lors de la copie:', error)
+    }
   }
 
   const getStrengthColor = (strength: string) => {
@@ -83,6 +104,37 @@ export function PasswordList({ passwords, folders }: PasswordListProps) {
 
     return folder.name
   }
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isMounted) return
+
+    const fetchPasswordUsages = async () => {
+      setIsLoadingUsages(true)
+      try {
+        const usages: Record<string, number> = {}
+        for (const password of passwords) {
+          try {
+            const usage = await getPasswordUsage(password.id)
+            usages[password.id] = usage
+          } catch (error) {
+            console.error(`Erreur lors de la récupération de l'utilisation pour ${password.id}:`, error)
+            usages[password.id] = 0
+          }
+        }
+        setPasswordUsages(usages)
+      } catch (error) {
+        console.error('Erreur lors de la récupération des utilisations:', error)
+      } finally {
+        setIsLoadingUsages(false)
+      }
+    }
+
+    fetchPasswordUsages()
+  }, [passwords, isMounted])
 
   if (passwords.length === 0) {
     return (
@@ -230,7 +282,9 @@ export function PasswordList({ passwords, folders }: PasswordListProps) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Nombre de vues :</span>
-                   <span className="text-xs font-semibold">{ getPasswordUsage(password.id) ?? 0}</span>
+                  <span className="text-xs font-semibold">
+                    {!isMounted || isLoadingUsages ? '...' : passwordUsages[password.id] ?? 0}
+                  </span>
                 </div>
                 {password.notes && (
                   <div className="pt-2 flex items-center text-xs text-muted-foreground">

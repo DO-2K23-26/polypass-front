@@ -40,12 +40,17 @@ export async function analyzePasswords(credentials: Credential[]): Promise<Secur
 }
 
 export async function getPasswordUsage(passwordId: string): Promise<number> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/statistics/metrcis/name/password_usage_count`, {
-    method: 'GET',
+  // Récupérer les métriques d'analyse
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/statistics/analyze`, {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ passwordId }),
+    body: JSON.stringify([{
+      id: passwordId,
+      password: 'dummy-password', // Le mot de passe n'est pas utilisé pour le comptage
+      lastUpdated: new Date().toISOString().split('T')[0]
+    }])
   })
 
   if (!response.ok) {
@@ -53,20 +58,23 @@ export async function getPasswordUsage(passwordId: string): Promise<number> {
   }
 
   const data = await response.json()
-  return data.usageCount || 0
+  // Le nombre d'utilisations est stocké dans les métriques de réutilisation
+  const reusedCount = Object.values(data.reusedPasswords || {}).flat().length
+  return reusedCount
 }
 
 export async function usePassword(passwordId: string): Promise<void> {
   try {
-    const body = {
-      passwordId,
-    }
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/statistics/use`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/statistics/analyze`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify([{
+        id: passwordId,
+        password: 'dummy-password', // Le mot de passe n'est pas utilisé pour le comptage
+        lastUpdated: new Date().toISOString().split('T')[0]
+      }])
     })
 
     if (!response.ok) {
