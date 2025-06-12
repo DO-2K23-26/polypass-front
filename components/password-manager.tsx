@@ -39,19 +39,6 @@ export interface PasswordEntry {
   old?: boolean
 }
 
-// Sample data
-// const initialFolders: FolderItem[] = [
-//   { id: "personal", name: "Personnel", parentId: null },
-//   { id: "work", name: "Travail", parentId: null },
-//   { id: "work-dev", name: "Développement", parentId: "work" },
-//   { id: "entertainment", name: "Divertissement", parentId: null },
-//   { id: "shopping", name: "Shopping", parentId: null },
-//   { id: "finance", name: "Finance", parentId: null },
-//   { id: "finance-banking", name: "Banque", parentId: "finance" },
-//   { id: "shared", name: "Partagé", parentId: null, shared: true },
-//   { id: "shared-team", name: "Équipe", parentId: "shared", shared: true },
-// ]
-
 const initialPasswords: PasswordEntry[] = [
   {
     id: "1",
