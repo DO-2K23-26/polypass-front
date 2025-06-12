@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ChevronRight, ChevronDown, Folder, FolderOpen, Plus, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,19 +9,22 @@ import type { FolderItem } from "@/components/password-manager"
 
 interface FolderTreeProps {
   folders: FolderItem[]
+  isLoading: boolean
   selectedFolderId: string | null
   onSelectFolder: (folderId: string | null) => void
   onAddFolder: (name: string, parentId: string | null) => void
   className?: string
 }
 
-export function FolderTree({ folders, selectedFolderId, onSelectFolder, onAddFolder, className }: FolderTreeProps) {
+export function FolderTree({ folders, isLoading, selectedFolderId, onSelectFolder, onAddFolder, className }: FolderTreeProps) {
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({})
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null)
   const [newFolderName, setNewFolderName] = useState("")
+  const [rootFolders, setRootFolders] = useState<FolderItem[]>(folders.filter((folder) => folder.parentId === null))
 
-  // Get root level folders
-  const rootFolders = folders.filter((folder) => folder.parentId === null)
+  useEffect(() => {
+    setRootFolders(folders.filter((folder) => folder.parentId === null))
+  }, [folders])
 
   const toggleExpand = (folderId: string) => {
     setExpandedFolders((prev) => ({
@@ -112,7 +115,7 @@ export function FolderTree({ folders, selectedFolderId, onSelectFolder, onAddFol
   }
 
   return (
-    <div className={cn("space-y-1", className)}>
+    <div className={cn("space-y-1", { 'flex flex-col justify-between h-[300px]': rootFolders.length === 0 }, className)}>
       <button
         type="button"
         className={cn(
@@ -126,6 +129,10 @@ export function FolderTree({ folders, selectedFolderId, onSelectFolder, onAddFol
       </button>
 
       {rootFolders.map((folder) => renderFolder(folder))}
+
+      {rootFolders.length === 0 && !isLoading && (
+        <p className="text-center text-muted-foreground">Aucun dossier trouvé</p>
+      )}
 
       {newFolderParentId === null && (
         <div className="flex items-center gap-2 mt-2">

@@ -11,6 +11,7 @@ import { PasswordForm } from "@/components/password-form"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import useOrganization from "@/hooks/use-organization"
 
 // Types for our data model
 export interface FolderItem {
@@ -39,17 +40,17 @@ export interface PasswordEntry {
 }
 
 // Sample data
-const initialFolders: FolderItem[] = [
-  { id: "personal", name: "Personnel", parentId: null },
-  { id: "work", name: "Travail", parentId: null },
-  { id: "work-dev", name: "Développement", parentId: "work" },
-  { id: "entertainment", name: "Divertissement", parentId: null },
-  { id: "shopping", name: "Shopping", parentId: null },
-  { id: "finance", name: "Finance", parentId: null },
-  { id: "finance-banking", name: "Banque", parentId: "finance" },
-  { id: "shared", name: "Partagé", parentId: null, shared: true },
-  { id: "shared-team", name: "Équipe", parentId: "shared", shared: true },
-]
+// const initialFolders: FolderItem[] = [
+//   { id: "personal", name: "Personnel", parentId: null },
+//   { id: "work", name: "Travail", parentId: null },
+//   { id: "work-dev", name: "Développement", parentId: "work" },
+//   { id: "entertainment", name: "Divertissement", parentId: null },
+//   { id: "shopping", name: "Shopping", parentId: null },
+//   { id: "finance", name: "Finance", parentId: null },
+//   { id: "finance-banking", name: "Banque", parentId: "finance" },
+//   { id: "shared", name: "Partagé", parentId: null, shared: true },
+//   { id: "shared-team", name: "Équipe", parentId: "shared", shared: true },
+// ]
 
 const initialPasswords: PasswordEntry[] = [
   {
@@ -126,15 +127,17 @@ const initialPasswords: PasswordEntry[] = [
     lastUpdated: "2023-12-10",
     folderId: "shared-team",
     tags: ["Projet", "Équipe"],
-    shared: true,
+    // shared: true,
   },
 ]
 
 const allTags = Array.from(new Set(initialPasswords.flatMap((p) => p.tags)))
 
 export function PasswordManager() {
+  const { folders, loadings } = useOrganization()
+
   const [passwords, setPasswords] = useState<PasswordEntry[]>(initialPasswords)
-  const [folders, setFolders] = useState<FolderItem[]>(initialFolders)
+  // const [folders, setFolders] = useState<FolderItem[]>(initialFolders)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
@@ -231,8 +234,8 @@ export function PasswordManager() {
 
   // Add a new folder
   const handleAddFolder = (name: string, parentId: string | null) => {
-    const newId = name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now().toString(36)
-    setFolders([...folders, { id: newId, name, parentId }])
+    // const newId = name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now().toString(36)
+    // setFolders([...folders, { id: newId, name, parentId }])
   }
 
   // Toggle tag selection
@@ -269,6 +272,7 @@ export function PasswordManager() {
               <ScrollArea className="h-[300px]">
                 <FolderTree
                   folders={folders}
+                  isLoading={loadings.foldersLoading}
                   selectedFolderId={selectedFolderId}
                   onSelectFolder={setSelectedFolderId}
                   onAddFolder={handleAddFolder}
