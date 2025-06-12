@@ -1,8 +1,9 @@
 'use client'
 
+import { getCredentials } from "@/lib/api/credentials";
 import { createFolder, getFolders } from "@/lib/api/folders";
 import { createTag, getTags } from "@/lib/api/tags";
-import { Credential } from "@/types/credential";
+import { CardCredential, Credential, PasswordCredential, SSHKeyCredential } from "@/types/credential";
 import { Folder } from "@/types/folder";
 import { Tag } from "@/types/tag";
 import { createContext, useEffect, useState } from "react";
@@ -10,7 +11,7 @@ import { createContext, useEffect, useState } from "react";
 export interface OrganizationProviderProps {
     folders: Folder[];
     tags: Tag[];
-    credentials: Credential[];
+    credentials: (CardCredential | PasswordCredential | SSHKeyCredential)[];
     selectedFolderId?: string;
     loadings: OrganizationLoadings;
     onCreateFolder: (folderName: string, parentId: string | null) => void;
@@ -50,21 +51,16 @@ const OrganizationContext = createContext<OrganizationProviderProps>({
 export const OrganizationProvider = ({ children }: any) => {
     const [folders, setFolders] = useState<Folder[]>([]);
     const [tags, setTags] = useState<Tag[]>([]);
-    const [credentials, setCredentials] = useState<Credential[]>([]);
+    const [credentials, setCredentials] = useState<(CardCredential | PasswordCredential | SSHKeyCredential)[]>([]);
     const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>(undefined);
     const [loadings, setLoadings] = useState<OrganizationLoadings>({
         foldersLoading: false,
         tagsLoading: false,
         credentialsLoading: false,
     });
-    
-    const loadData = async () => {
-        setLoadings({
-            foldersLoading: true,
-            tagsLoading: true,
-            credentialsLoading: true,
-        });
 
+    const loadFolders = async () => {
+        setLoadings((prev) => ({ ...prev, foldersLoading: true }));
         try {
             const folders = await getFolders("Baptiste", 1, 100);
             setFolders(folders);
@@ -73,7 +69,10 @@ export const OrganizationProvider = ({ children }: any) => {
         } finally {
             setLoadings((prev) => ({ ...prev, foldersLoading: false }));
         }
+    }
 
+    const loadTags = async () => {
+        setLoadings((prev) => ({ ...prev, tagsLoading: true }));
         try {
             const tags = await getTags();
             setTags(tags);
@@ -83,14 +82,40 @@ export const OrganizationProvider = ({ children }: any) => {
             setLoadings((prev) => ({ ...prev, tagsLoading: false }));
         }
     }
+
+    const loadCredentials = async (folderId?: string) => {
+        setLoadings((prev) => ({ ...prev, credentialsLoading: true }));
+        try {
+            const credentials = await getCredentials(folderId ?? "8115a3f7-20cc-44d6-9e62-182eab3b8cd5", 'password');
+            setCredentials(credentials);
+            console.log("Credentials loaded:", credentials);
+        } catch (error) {
+            console.error("Error loading credentials:", error);
+        } finally {
+            setLoadings((prev) => ({ ...prev, credentialsLoading: false }));
+        }
+    }
+    
+    const loadData = async (folderId?: string) => {
+        loadFolders();
+
+        loadTags();
+
+        loadCredentials(folderId);
+    }
+
     const updateSelectedFolderId = (folderId: string | null) => {
         setSelectedFolderId(folderId ?? undefined);
         console.log(`Selected folder ID updated to: ${folderId}`);
     }
 
     useEffect(() => {
-        loadData()
+        loadData(selectedFolderId)
     }, [])
+
+    useEffect(() => {
+        loadCredentials(selectedFolderId);
+    }, [selectedFolderId]);
 
     const onCreateFolder = async (folderName: string, parentId: string | null) => {
         try {

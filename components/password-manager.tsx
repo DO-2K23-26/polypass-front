@@ -122,9 +122,9 @@ const initialPasswords: PasswordEntry[] = [
 
 
 export function PasswordManager() {
-  const { folders, tags, loadings } = useOrganization()
+  const { folders, tags, credentials, loadings } = useOrganization()
 
-  const [passwords, setPasswords] = useState<PasswordEntry[]>(initialPasswords)
+  const [passwords, setPasswords] = useState<PasswordEntry[]>([])
   // const [folders, setFolders] = useState<FolderItem[]>(initialFolders)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
@@ -157,47 +157,57 @@ export function PasswordManager() {
   }
 
   // Filter passwords based on search query, selected folder and tags
-  const filteredPasswords = passwords.filter((password) => {
-    // Search filter
-    let matchesSearch = true
-    if (searchQuery) {
-      switch (searchFilter) {
-        case "login":
-          matchesSearch = password.username.toLowerCase().includes(searchQuery.toLowerCase())
-          break
-        case "website":
-          matchesSearch =
-            password.website.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            password.title.toLowerCase().includes(searchQuery.toLowerCase())
-          break
-        case "tags":
-          matchesSearch = password.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-          break
-        case "all":
-        default:
-          matchesSearch =
-            password.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            password.website.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            password.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            password.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      }
-    }
+  // const filteredPasswords = credentials.filter((password) => {
+  //   // Search filter
+  //   let matchesSearch = true
+  //   if (searchQuery) {
+  //     switch (searchFilter) {
+  //       case "login":
+  //         if ("password" in password && typeof password.password === "string") {
+  //           matchesSearch = password.user_identifier.toLowerCase().includes(searchQuery.toLowerCase())
+  //         } else {
+  //           matchesSearch = false
+  //         }
+  //         break
+  //       case "website":
+  //         if ("website" in password && typeof password.website === "string") {
+  //           matchesSearch = password.website.toLowerCase().includes(searchQuery.toLowerCase())
+  //         } else {
+  //           matchesSearch = false
+  //         }
+  //         // matchesSearch =
+  //         //   password.website.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //         //   password.title.toLowerCase().includes(searchQuery.toLowerCase())
+  //         break
+  //       case "tags":
+          
+  //         matchesSearch = password.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  //         break
+  //       case "all":
+  //       default:
+  //         matchesSearch =
+  //           password.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //           password.website.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //           password.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //           password.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  //     }
+  //   }
 
-    // Folder filter
-    let matchesFolder = true
-    if (selectedFolderId) {
-      const folderIds = [selectedFolderId, ...getAllChildFolderIds(selectedFolderId)]
-      matchesFolder = folderIds.includes(password.folderId)
-    }
+  //   // Folder filter
+  //   let matchesFolder = true
+  //   if (selectedFolderId) {
+  //     const folderIds = [selectedFolderId, ...getAllChildFolderIds(selectedFolderId)]
+  //     matchesFolder = folderIds.includes(password.folderId)
+  //   }
 
-    // Tags filter
-    let matchesTags = true
-    if (selectedTags.length > 0) {
-      matchesTags = selectedTags.every((tag) => password.tags.includes(tag))
-    }
+  //   // Tags filter
+  //   let matchesTags = true
+  //   if (selectedTags.length > 0) {
+  //     matchesTags = selectedTags.every((tag) => password.tags.includes(tag))
+  //   }
 
-    return matchesSearch && matchesFolder && matchesTags
-  })
+  //   return matchesSearch && matchesFolder && matchesTags
+  // })
 
   // Add a new password
   const handleAddPassword = (newPassword: Partial<PasswordEntry>) => {
@@ -413,7 +423,7 @@ export function PasswordManager() {
               allTags={tags.map((tag) => tag.name)}
             />
           ) : (
-            <PasswordList passwords={filteredPasswords} folders={folders} />
+            <PasswordList passwords={credentials} folders={folders} />
           )}
         </div>
       </div>
