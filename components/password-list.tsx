@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Copy, Eye, EyeOff, MoreHorizontal, FileText, AlertTriangle, RefreshCw, Link2 } from "lucide-react"
+import { Copy, Eye, EyeOff, MoreHorizontal, FileText, AlertTriangle, RefreshCw, Link2, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -27,7 +27,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-
+import { getPasswordUsage, usePassword } from "@/lib/api/security"
 interface PasswordListProps {
   passwords: PasswordEntry[]
   folders: FolderItem[]
@@ -37,16 +37,19 @@ export function PasswordList({ passwords, folders }: PasswordListProps) {
   const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({})
   const [selectedPassword, setSelectedPassword] = useState<PasswordEntry | null>(null)
   const [showShareDialog, setShowShareDialog] = useState(false)
+  
 
-  const togglePasswordVisibility = (id: string) => {
+ const togglePasswordVisibility = (id: string) => {
     setRevealedPasswords((prev) => ({
       ...prev,
       [id]: !prev[id],
     }))
+    usePassword(id)
   }
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, idPassword: string) => {
     navigator.clipboard.writeText(text)
+    usePassword(idPassword)
   }
 
   const getStrengthColor = (strength: string) => {
@@ -143,10 +146,10 @@ export function PasswordList({ passwords, folders }: PasswordListProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => copyToClipboard(password.username)}>
+                    <DropdownMenuItem onClick={() => copyToClipboard(password.username, password.id)}>
                       Copier l'identifiant
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => copyToClipboard(password.password)}>
+                    <DropdownMenuItem onClick={() => copyToClipboard(password.password,password.id)}>
                       Copier le mot de passe
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -212,7 +215,7 @@ export function PasswordList({ passwords, folders }: PasswordListProps) {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => copyToClipboard("ExamplePass123")}
+                      onClick={() => copyToClipboard("ExamplePass123", password.id)}
                     >
                       <Copy className="h-4 w-4" />
                       <span className="sr-only">Copier le mot de passe</span>
@@ -224,6 +227,10 @@ export function PasswordList({ passwords, folders }: PasswordListProps) {
                   <Badge variant="outline" className={getStrengthColor(password.strength)}>
                     {password.strength === "strong" ? "Fort" : password.strength === "medium" ? "Moyen" : "Faible"}
                   </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Nombre de vues :</span>
+                   <span className="text-xs font-semibold">{ getPasswordUsage(password.id) ?? 0}</span>
                 </div>
                 {password.notes && (
                   <div className="pt-2 flex items-center text-xs text-muted-foreground">
@@ -268,7 +275,7 @@ export function PasswordList({ passwords, folders }: PasswordListProps) {
                       variant="ghost"
                       size="icon"
                       className="ml-2"
-                      onClick={() => selectedPassword && copyToClipboard(selectedPassword.username)}
+                      onClick={() => selectedPassword && copyToClipboard(selectedPassword.username, selectedPassword.id)}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
@@ -302,7 +309,7 @@ export function PasswordList({ passwords, folders }: PasswordListProps) {
                       variant="ghost"
                       size="icon"
                       className="ml-2"
-                      onClick={() => copyToClipboard("ExamplePass123")}
+                      onClick={() => selectedPassword && copyToClipboard("ExamplePass123", selectedPassword.id)}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
@@ -322,7 +329,7 @@ export function PasswordList({ passwords, folders }: PasswordListProps) {
                         readOnly
                         className="flex-1"
                       />
-                      <Button variant="ghost" size="icon" className="ml-2" onClick={() => copyToClipboard(field.value)}>
+                      <Button variant="ghost" size="icon" className="ml-2" onClick={() => copyToClipboard(field.value, selectedPassword.id)}>
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
