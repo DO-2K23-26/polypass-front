@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import type { FolderItem, PasswordEntry } from "@/components/password-manager"
+import type { Folder } from "@/types/folder"
+import type { PasswordEntry } from "@/types/password-entry"
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { getPasswordUsage, usePassword } from "@/lib/api/security"
 interface PasswordListProps {
   passwords: PasswordEntry[]
-  folders: FolderItem[]
+  folders: Folder[]
 }
 
 export function PasswordList({ passwords, folders }: PasswordListProps) {

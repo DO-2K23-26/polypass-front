@@ -22,12 +22,12 @@ import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import type { FolderItem } from "@/components/password-manager"
+import type { Folder } from "@/types/folder"
 import { Switch } from "@/components/ui/switch"
 
 interface PasswordFormProps {
   onAddPassword: (password: any) => void
-  folders: FolderItem[]
+  folders: Folder[]
   onAddFolder: (name: string, parentId: string | null) => void
   onCancel: () => void
   allTags: string[]
@@ -236,7 +236,7 @@ export function PasswordForm({ onAddPassword, folders, onAddFolder, onCancel, al
   }
 
   // Get folder path for display
-  const getFolderPath = (folder: FolderItem): string => {
+  const getFolderPath = (folder: Folder): string => {
     if (!folder.parentId) return folder.name
 
     const parent = folders.find((f) => f.id === folder.parentId)

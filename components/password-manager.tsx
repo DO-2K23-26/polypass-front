@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Search, Plus, Key, AlertTriangle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -11,135 +11,38 @@ import { PasswordForm } from "@/components/password-form"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-
-// Types for our data model
-export interface FolderItem {
-  id: string
-  name: string
-  parentId: string | null
-  shared?: boolean
-}
-
-export interface PasswordEntry {
-  id: string
-  title: string
-  website: string
-  username: string
-  password: string
-  strength: "weak" | "medium" | "strong"
-  lastUpdated: string
-  folderId: string
-  tags: string[]
-  notes?: string
-  customFields?: { label: string; value: string; type: string }[]
-  files?: { name: string; size: number; type: string }[]
-  breached?: boolean
-  reused?: boolean
-  old?: boolean
-}
-
-// Sample data
-const initialFolders: FolderItem[] = [
-  { id: "personal", name: "Personnel", parentId: null },
-  { id: "work", name: "Travail", parentId: null },
-  { id: "work-dev", name: "Développement", parentId: "work" },
-  { id: "entertainment", name: "Divertissement", parentId: null },
-  { id: "shopping", name: "Shopping", parentId: null },
-  { id: "finance", name: "Finance", parentId: null },
-  { id: "finance-banking", name: "Banque", parentId: "finance" },
-  { id: "shared", name: "Partagé", parentId: null, shared: true },
-  { id: "shared-team", name: "Équipe", parentId: "shared", shared: true },
-]
-
-const initialPasswords: PasswordEntry[] = [
-  {
-    id: "1",
-    title: "Gmail",
-    website: "gmail.com",
-    username: "user@example.com",
-    password: "••••••••••••",
-    strength: "strong",
-    lastUpdated: "2023-12-01",
-    folderId: "personal",
-    tags: ["Important", "Email"],
-    notes: "Compte email principal",
-    customFields: [{ label: "Téléphone de récupération", value: "+33612345678", type: "text" }],
-  },
-  {
-    id: "2",
-    title: "GitHub",
-    website: "github.com",
-    username: "devuser",
-    password: "••••••••",
-    strength: "medium",
-    lastUpdated: "2023-11-15",
-    folderId: "work-dev",
-    tags: ["Développement"],
-    reused: true,
-  },
-  {
-    id: "3",
-    title: "Netflix",
-    website: "netflix.com",
-    username: "moviefan",
-    password: "•••••••••",
-    strength: "weak",
-    lastUpdated: "2023-10-20",
-    folderId: "entertainment",
-    tags: ["Streaming", "Partagé"],
-    breached: true,
-  },
-  {
-    id: "4",
-    title: "Amazon",
-    website: "amazon.com",
-    username: "shopper123",
-    password: "•••••••••••",
-    strength: "strong",
-    lastUpdated: "2023-09-05",
-    folderId: "shopping",
-    tags: ["Shopping"],
-    old: true,
-  },
-  {
-    id: "5",
-    title: "Banque Populaire",
-    website: "banquepopulaire.fr",
-    username: "client123",
-    password: "••••••••••••••",
-    strength: "strong",
-    lastUpdated: "2023-11-28",
-    folderId: "finance-banking",
-    tags: ["Banque", "Important"],
-    customFields: [
-      { label: "Numéro de compte", value: "FR76 1234 5678 9012 3456 7890 123", type: "text" },
-      { label: "Code secret", value: "••••", type: "password" },
-    ],
-  },
-  {
-    id: "6",
-    title: "Projet X",
-    website: "projet-x.com",
-    username: "team-member",
-    password: "•••••••••••",
-    strength: "strong",
-    lastUpdated: "2023-12-10",
-    folderId: "shared-team",
-    tags: ["Projet", "Équipe"],
-    shared: true,
-  },
-]
-
-const allTags = Array.from(new Set(initialPasswords.flatMap((p) => p.tags)))
+import type { Folder } from "@/types/folder"
+import type { PasswordEntry } from "@/types/password-entry"
+import { useCredentials } from "@/hooks/use-credentials"
+import { useFolders } from "@/hooks/use-folders"
+import { useTags } from "@/hooks/use-tags"
 
 export function PasswordManager() {
-  const [passwords, setPasswords] = useState<PasswordEntry[]>(initialPasswords)
-  const [folders, setFolders] = useState<FolderItem[]>(initialFolders)
+  const userId = process.env.NEXT_PUBLIC_USER_ID || 'demo'
+  const { credentials: fetchedPasswords, isLoading: loadingCredentials } = useCredentials(userId)
+  const { folders: fetchedFolders, isLoading: loadingFolders } = useFolders(userId)
+  const { tags, isLoading: loadingTags } = useTags()
+  const allTags = tags.map(t => t.name)
+
+  const [passwords, setPasswords] = useState<PasswordEntry[]>([])
+  const [folders, setFolders] = useState<Folder[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [searchFilter, setSearchFilter] = useState<"all" | "login" | "website" | "tags">("all")
+
+  useEffect(() => {
+    setPasswords(fetchedPasswords)
+  }, [fetchedPasswords])
+
+  useEffect(() => {
+    setFolders(fetchedFolders)
+  }, [fetchedFolders])
+
+  if (loadingCredentials || loadingFolders || loadingTags) {
+    return <div>Chargement...</div>
+  }
 
   // Function to get all child folder IDs recursively
   const getAllChildFolderIds = (folderId: string): string[] => {
