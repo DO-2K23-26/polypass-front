@@ -20,10 +20,15 @@ export function FolderTree({ folders, isLoading, selectedFolderId, onSelectFolde
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({})
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null)
   const [newFolderName, setNewFolderName] = useState("")
-  const [rootFolders, setRootFolders] = useState<FolderItem[]>(folders.filter((folder) => folder.parentId === null))
+
+  const getRootFolders = () => {
+    return folders.filter((folder) => !folders.map(f => f.id).includes(folder.parentId ?? ''))
+  }
+
+  const [rootFolders, setRootFolders] = useState<FolderItem[]>(getRootFolders())
 
   useEffect(() => {
-    setRootFolders(folders.filter((folder) => folder.parentId === null))
+    setRootFolders(getRootFolders())
   }, [folders])
 
   const toggleExpand = (folderId: string) => {
