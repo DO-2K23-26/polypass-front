@@ -118,10 +118,11 @@ const initialPasswords: PasswordEntry[] = [
   },
 ]
 
-const allTags = Array.from(new Set(initialPasswords.flatMap((p) => p.tags)))
+// const allTags = Array.from(new Set(initialPasswords.flatMap((p) => p.tags)))
+
 
 export function PasswordManager() {
-  const { folders, loadings } = useOrganization()
+  const { folders, tags, loadings } = useOrganization()
 
   const [passwords, setPasswords] = useState<PasswordEntry[]>(initialPasswords)
   // const [folders, setFolders] = useState<FolderItem[]>(initialFolders)
@@ -268,14 +269,14 @@ export function PasswordManager() {
             </CardHeader>
             <CardContent className="p-4">
               <div className="flex flex-wrap gap-2">
-                {allTags.map((tag) => (
+                {tags.map((tag) => (
                   <Badge
-                    key={tag}
-                    variant={selectedTags.includes(tag) ? "default" : "outline"}
+                    key={tag.id}
+                    variant={selectedTags.includes(tag.id) || true ? "default" : "outline"}
                     className="cursor-pointer"
-                    onClick={() => toggleTag(tag)}
+                    // onClick={() => toggleTag(tag)}
                   >
-                    {tag}
+                    {tag.name}
                   </Badge>
                 ))}
               </div>
@@ -409,7 +410,7 @@ export function PasswordManager() {
               folders={folders}
               onAddFolder={handleAddFolder}
               onCancel={() => setShowAddForm(false)}
-              allTags={allTags}
+              allTags={tags.map((tag) => tag.name)}
             />
           ) : (
             <PasswordList passwords={filteredPasswords} folders={folders} />

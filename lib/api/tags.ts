@@ -1,25 +1,53 @@
-import { Tag } from '@/types/tag'
+import { GetTagsResponse, PostTagRequest, Tag } from '@/types/tag'
 
 export async function getTags(): Promise<Tag[]> {
   const baseUrl = process.env.NEXT_PUBLIC_ORGANIZATION_URL || 'http://localhost:3001'
-  const response = await fetch(`${baseUrl}/tags`)
-  if (!response.ok) {
-    throw new Error('Erreur lors de la récupération des tags')
+  
+  try {
+    const response = await fetch(`${baseUrl}/tags`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: null
+    })
+    if (!response.ok) {
+      throw new Error('Erreur lors de la récupération des tags')
+    }
+
+    const data: GetTagsResponse[] = await response.json()
+
+    return data.map(tag => ({
+      id: tag.id,
+      name: tag.name,
+      color: tag.color,
+      folderId: tag.folder_id,
+      createdBy: tag.created_by,
+    }))
+  } catch (error) {
+    console.error('Erreur lors de la récupération des tags:', error)
+    throw error
   }
-  return await response.json()
 }
 
-export async function createTag(data: Partial<Tag>): Promise<Tag> {
+export async function createTag(data: PostTagRequest): Promise<void> {
   const baseUrl = process.env.NEXT_PUBLIC_ORGANIZATION_URL || 'http://localhost:3001'
-  const response = await fetch(`${baseUrl}/tags`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) {
-    throw new Error('Erreur lors de la création du tag')
+  
+  try {
+    const response = await fetch(`${baseUrl}/tags`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de la création du tag')
+    }
+    
+  } catch (error) {
+    console.error('Erreur lors de la création du tag:', error)
+    throw error
   }
-  return await response.json()
 }
 
 export async function updateTag(id: string, data: Partial<Tag>): Promise<Tag> {

@@ -1,6 +1,7 @@
 'use client'
 
 import { createFolder, getFolders } from "@/lib/api/folders";
+import { createTag, getTags } from "@/lib/api/tags";
 import { Credential } from "@/types/credential";
 import { Folder } from "@/types/folder";
 import { Tag } from "@/types/tag";
@@ -13,8 +14,11 @@ export interface OrganizationProviderProps {
     selectedFolderId?: string;
     loadings: OrganizationLoadings;
     onCreateFolder: (folderName: string, parentId: string | null) => void;
-    onUpdateFolder: (id: string, data: Partial<Folder>) => void;
-    onDeleteFolder: (id: string) => void;
+    // onUpdateFolder: (id: string, data: Partial<Folder>) => void;
+    // onDeleteFolder: (id: string) => void;
+    onCreateTag: (tagName: string, color: string, folderId: string) => void;
+    // onUpdateTag: (id: string, data: Partial<Tag>) => void;
+    // onDeleteTag: (id: string) => void;
     updateSelectedFolderId: (folderId: string | null) => void;
     reloadData: () => void;
 }
@@ -36,8 +40,9 @@ const OrganizationContext = createContext<OrganizationProviderProps>({
         credentialsLoading: false,
     },
     onCreateFolder: (folderName: string, parentId: string | null) => {},
-    onUpdateFolder: (id: string, data: Partial<Folder>) => {},
-    onDeleteFolder: (id: string) => {},
+    // onUpdateFolder: (id: string, data: Partial<Folder>) => {},
+    // onDeleteFolder: (id: string) => {},
+    onCreateTag: (tagName: string, color: string, folderId: string) => {},
     updateSelectedFolderId: (folderId: string | null) => {},
     reloadData: () => {},
 });
@@ -68,6 +73,15 @@ export const OrganizationProvider = ({ children }: any) => {
         } finally {
             setLoadings((prev) => ({ ...prev, foldersLoading: false }));
         }
+
+        try {
+            const tags = await getTags();
+            setTags(tags);
+        } catch (error) {
+            console.error("Error loading tags:", error);
+        } finally {
+            setLoadings((prev) => ({ ...prev, tagsLoading: false }));
+        }
     }
     const updateSelectedFolderId = (folderId: string | null) => {
         setSelectedFolderId(folderId ?? undefined);
@@ -86,22 +100,31 @@ export const OrganizationProvider = ({ children }: any) => {
             console.error("Error creating folder:", error);
         }
     };
-    const onUpdateFolder = async (id: string, data: Partial<Folder>) => {
+    // const onUpdateFolder = async (id: string, data: Partial<Folder>) => {
+    //     try {
+    //         // const updatedFolder = await updateFolder(id, data);
+    //         // setFolders((prev) =>
+    //         //     prev.map((folder) => (folder.id === id ? updatedFolder : folder))
+    //         // );
+    //     } catch (error) {
+    //         console.error("Error updating folder:", error);
+    //     }
+    // };
+    // const onDeleteFolder = async (id: string) => {
+    //     try {
+    //         // await deleteFolder(id);
+    //         // setFolders((prev) => prev.filter((folder) => folder.id !== id));
+    //     } catch (error) {
+    //         console.error("Error deleting folder:", error);
+    //     }
+    // };
+
+    const onCreateTag = async (tagName: string, color: string, folderId: string) => {
         try {
-            // const updatedFolder = await updateFolder(id, data);
-            // setFolders((prev) =>
-            //     prev.map((folder) => (folder.id === id ? updatedFolder : folder))
-            // );
+            const newTag = await createTag({ name: tagName, color, folder_id: folderId, created_by: "Baptiste" });
+            loadData();
         } catch (error) {
-            console.error("Error updating folder:", error);
-        }
-    };
-    const onDeleteFolder = async (id: string) => {
-        try {
-            // await deleteFolder(id);
-            // setFolders((prev) => prev.filter((folder) => folder.id !== id));
-        } catch (error) {
-            console.error("Error deleting folder:", error);
+            console.error("Error creating tag:", error);
         }
     };
 
@@ -114,8 +137,9 @@ export const OrganizationProvider = ({ children }: any) => {
                 selectedFolderId,
                 loadings,
                 onCreateFolder,
-                onUpdateFolder,
-                onDeleteFolder,
+                // onUpdateFolder,
+                // onDeleteFolder,
+                onCreateTag,
                 updateSelectedFolderId,
                 reloadData: loadData,
             }}
