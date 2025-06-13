@@ -1,6 +1,4 @@
-'use server'
-
-import { apiClient } from '@/lib/api-client'
+'use client'
 
 // Types pour l'API
 export interface PostSecretRequest {
@@ -32,7 +30,7 @@ export interface HistorySecret {
 
 // Créer un nouveau secret
 export async function createSecret(request: PostSecretRequest): Promise<PostSecretResponse> {
-  const apiUrl = process.env.SHARING_API
+  const apiUrl = process.env.NEXT_PUBLIC_SHARING_API
 
   if (!apiUrl) {
     console.error("Variable d'environnement SHARING_API non définie")
@@ -43,7 +41,7 @@ export async function createSecret(request: PostSecretRequest): Promise<PostSecr
   console.log('Données envoyées:', JSON.stringify(request, null, 2))
 
   try {
-    const response = await apiClient.fetch(apiUrl, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,7 +65,7 @@ export async function createSecret(request: PostSecretRequest): Promise<PostSecr
 
 // Récupérer un secret
 export async function getSecret(id: string): Promise<GetSecretResponse> {
-  const apiUrl = process.env.SHARING_API
+  const apiUrl = process.env.NEXT_PUBLIC_SHARING_API
 
   if (!apiUrl) {
     console.error("Variable d'environnement SHARING_API non définie")
@@ -77,7 +75,7 @@ export async function getSecret(id: string): Promise<GetSecretResponse> {
   console.log(`Récupération du secret ${id} depuis ${apiUrl}/${id}`)
 
   try {
-    const response = await apiClient.fetch(`${apiUrl}/${id}`, {
+    const response = await fetch(`${apiUrl}/${id}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -106,7 +104,7 @@ export async function getSecret(id: string): Promise<GetSecretResponse> {
 
 // Déchiffrer un secret protégé par mot de passe
 export async function decryptSecret(id: string, passphrase: string): Promise<GetSecretResponse> {
-  const apiUrl = process.env.SHARING_API
+  const apiUrl = process.env.NEXT_PUBLIC_SHARING_API
 
   if (!apiUrl) {
     console.error("Variable d'environnement SHARING_API non définie")
@@ -116,7 +114,7 @@ export async function decryptSecret(id: string, passphrase: string): Promise<Get
   console.log(`Déchiffrement du secret ${id}`)
 
   try {
-    const response = await apiClient.fetch(`${apiUrl}/${id}`, {
+    const response = await fetch(`${apiUrl}/${id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -146,7 +144,7 @@ export async function decryptSecret(id: string, passphrase: string): Promise<Get
 
 // Récupérer l'historique des secrets
 export async function getHistory(): Promise<HistorySecret[]> {
-  const apiUrl = process.env.SHARING_API
+  const apiUrl = process.env.NEXT_PUBLIC_SHARING_API
 
   if (!apiUrl) {
     console.error("Variable d'environnement SHARING_API non définie")
@@ -156,7 +154,7 @@ export async function getHistory(): Promise<HistorySecret[]> {
   console.log(`Récupération de l'historique depuis ${apiUrl}/history`)
 
   try {
-    const response = await apiClient.fetch(`${apiUrl}/history`, {
+    const response = await fetch(`${apiUrl}/history`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

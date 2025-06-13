@@ -75,7 +75,7 @@ ingress:
 resources: {}
   
 extraEnv:
-  - name: SHARING_API
+  - name: NEXT_PUBLIC_SHARING_API
     value: "http://sharing.polypass.umontpelier.fr"
   - name: NEXT_PUBLIC_OIDC_PROVIDER_URL
     value: "https://auth.polypass.umontpelier.fr"

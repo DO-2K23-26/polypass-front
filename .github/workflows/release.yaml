@@ -46,7 +46,7 @@ jobs:
           echo "NEXT_PUBLIC_OIDC_CLIENT_ID=${{ vars.NEXT_PUBLIC_OIDC_CLIENT_ID }}" >> .env.production
           echo "NEXT_PUBLIC_OIDC_PROVIDER_URL=${{ vars.NEXT_PUBLIC_OIDC_PROVIDER_URL }}" >> .env.production
           echo "NEXT_PUBLIC_OIDC_REDIRECT_URI=${{ vars.NEXT_PUBLIC_OIDC_REDIRECT_URI }}" >> .env.production
-          echo "SHARING_API=${{ vars.SHARING_API }}" >> .env.production
+          echo "NEXT_PUBLIC_SHARING_API=${{ vars.SHARING_API }}" >> .env.production
           
       - name: Build and push Docker image
         id: push
