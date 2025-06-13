@@ -1,50 +1,151 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AlertTriangle, Shield, RefreshCw, Clock, CheckCircle2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import { analyzePasswords, SecurityMetrics } from "@/lib/api/security"
+import { useCredentials } from "@/hooks/use-credentials"
+import { toast } from "sonner"
 
 export function SecurityDashboard() {
-  const [securityScore, setSecurityScore] = useState(68)
-  const [lastScan, setLastScan] = useState("2023-12-15")
+  const [securityScore, setSecurityScore] = useState(0)
+  const [lastScan, setLastScan] = useState<string | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [metrics, setMetrics] = useState<SecurityMetrics>(() => {
+    // Récupérer les métriques du localStorage au chargement initial
+    if (typeof window !== 'undefined') {
+      const savedMetrics = localStorage.getItem('securityMetrics')
+      const savedLastScan = localStorage.getItem('lastSecurityScan')
+      if (savedMetrics && savedLastScan) {
+        setLastScan(savedLastScan)
+        return JSON.parse(savedMetrics)
+      }
+    }
+    return {
+      weakPasswords: {},
+      strongPasswords: {},
+      reusedPasswords: {},
+      oldPasswords: {},
+      breachedPasswords: {},
+    }
+  })
 
-  const weakPasswords = [
-    { id: "1", title: "Netflix", username: "moviefan", website: "netflix.com", lastUpdated: "2023-10-20" },
-    { id: "2", title: "Twitter", username: "socialuser", website: "twitter.com", lastUpdated: "2023-08-12" },
-  ]
+  const { credentials, isLoading: isLoadingCredentials } = useCredentials()
 
-  const reusedPasswords = [
-    { id: "3", title: "GitHub", username: "devuser", website: "github.com", lastUpdated: "2023-11-15" },
-    { id: "4", title: "GitLab", username: "devuser", website: "gitlab.com", lastUpdated: "2023-09-22" },
-  ]
+  const analyzeSecurity = async () => {
+    if (credentials.length === 0) {
+      toast.error("Aucun credential à analyser")
+      return
+    }
 
-  const oldPasswords = [
-    { id: "5", title: "Amazon", username: "shopper123", website: "amazon.com", lastUpdated: "2023-09-05" },
-    { id: "6", title: "eBay", username: "bidder42", website: "ebay.com", lastUpdated: "2023-07-18" },
-  ]
+    try {
+      setIsAnalyzing(true)
+      const result = await analyzePasswords(credentials)
+      setMetrics(result)
+      const scanTime = new Date().toISOString()
+      setLastScan(scanTime)
+      
+      // Sauvegarder les métriques et le timestamp dans le localStorage
+      localStorage.setItem('securityMetrics', JSON.stringify(result))
+      localStorage.setItem('lastSecurityScan', scanTime)
+      
+      toast.success("Analyse de sécurité terminée")
+    } catch (error) {
+      console.error("Erreur lors de l'analyse:", error)
+      toast.error("Erreur lors de l'analyse de sécurité")
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
 
-  const breachedAccounts = [
-    {
-      id: "7",
-      title: "LinkedIn",
-      username: "professional",
-      website: "linkedin.com",
-      breachDate: "2023-11-30",
-      severity: "high",
-    },
-    {
-      id: "8",
-      title: "Dropbox",
-      username: "fileuser",
-      website: "dropbox.com",
-      breachDate: "2023-10-05",
-      severity: "medium",
-    },
-  ]
+  // Calculer le score de sécurité
+  useEffect(() => {
+    if (credentials.length === 0) return
+
+    const totalPasswords = credentials.length
+    const weakCount = Object.keys(metrics.weakPasswords).length
+    const reusedCount = Object.keys(metrics.reusedPasswords).length
+    const oldCount = Object.keys(metrics.oldPasswords).length
+    const breachedCount = Object.keys(metrics.breachedPasswords).length
+
+    // Calcul basé sur la proportion de chaque type de problème
+    const weakPenalty = (weakCount / totalPasswords) * 30 // 30% de pénalité max pour les mots de passe faibles
+    const reusedPenalty = (reusedCount / totalPasswords) * 25 // 25% de pénalité max pour les réutilisations
+    const oldPenalty = (oldCount / totalPasswords) * 20 // 20% de pénalité max pour les mots de passe anciens
+    const breachedPenalty = (breachedCount / totalPasswords) * 25 // 25% de pénalité max pour les compromissions
+
+    // Score final en soustrayant les pénalités de 100
+    const score = Math.max(
+      0,
+      Math.min(
+        100,
+        Math.round(100 - (weakPenalty + reusedPenalty + oldPenalty + breachedPenalty))
+      )
+    )
+
+    setSecurityScore(score)
+  }, [metrics, credentials])
+
+  // Transformer les données pour l'affichage
+  const weakPasswordsList = Object.entries(metrics.weakPasswords).flatMap(([password, ids]) =>
+    ids.map(id => {
+      const credential = credentials.find(c => c.id === id)
+      return {
+        id,
+        title: credential?.title || "Inconnu",
+        username: credential?.username || "Inconnu",
+        website: credential?.website || "Inconnu",
+        lastUpdated: credential?.lastUpdated || "Inconnu",
+      }
+    })
+  )
+
+  const reusedPasswordsList = Object.entries(metrics.reusedPasswords).flatMap(([password, ids]) =>
+    ids.map(id => {
+      const credential = credentials.find(c => c.id === id)
+      return {
+        id,
+        title: credential?.title || "Inconnu",
+        username: credential?.username || "Inconnu",
+        website: credential?.website || "Inconnu",
+        lastUpdated: credential?.lastUpdated || "Inconnu",
+      }
+    })
+  )
+
+  const oldPasswordsList = Object.entries(metrics.oldPasswords).flatMap(([password, ids]) =>
+    ids.map(id => {
+      const credential = credentials.find(c => c.id === id)
+      return {
+        id,
+        title: credential?.title || "Inconnu",
+        username: credential?.username || "Inconnu",
+        website: credential?.website || "Inconnu",
+        lastUpdated: credential?.lastUpdated || "Inconnu",
+      }
+    })
+  )
+
+  const breachedPasswordsList = Object.entries(metrics.breachedPasswords).flatMap(([password, ids]) =>
+    ids.map(id => {
+      const credential = credentials.find(c => c.id === id)
+      return {
+        id,
+        title: credential?.title || "Inconnu",
+        username: credential?.username || "Inconnu",
+        website: credential?.website || "Inconnu",
+        lastUpdated: credential?.lastUpdated || "Inconnu",
+      }
+    })
+  )
+
+  if (isLoadingCredentials) {
+    return <div>Chargement...</div>
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -77,9 +178,9 @@ export function SecurityDashboard() {
             <AlertTriangle className="h-4 w-4 text-amber-500 self-start" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{weakPasswords.length}</div>
+            <div className="text-2xl font-bold">{weakPasswordsList.length}</div>
             <p className="text-xs text-muted-foreground mt-2">
-              {weakPasswords.length === 0
+              {weakPasswordsList.length === 0
                 ? "Tous vos mots de passe sont forts"
                 : "Mots de passe nécessitant une amélioration"}
             </p>
@@ -91,9 +192,9 @@ export function SecurityDashboard() {
             <RefreshCw className="h-4 w-4 text-blue-500 self-start" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{reusedPasswords.length}</div>
+            <div className="text-2xl font-bold">{reusedPasswordsList.length}</div>
             <p className="text-xs text-muted-foreground mt-2">
-              {reusedPasswords.length === 0
+              {reusedPasswordsList.length === 0
                 ? "Aucun mot de passe n'est réutilisé"
                 : "Mots de passe utilisés sur plusieurs sites"}
             </p>
@@ -101,15 +202,15 @@ export function SecurityDashboard() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Comptes compromis</CardTitle>
+            <CardTitle className="text-sm font-medium">Mots de passe compromis</CardTitle>
             <AlertTriangle className="h-4 w-4 text-red-500 self-start" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{breachedAccounts.length}</div>
+            <div className="text-2xl font-bold">{breachedPasswordsList.length}</div>
             <p className="text-xs text-muted-foreground mt-2">
-              {breachedAccounts.length === 0
-                ? "Aucun compte compromis détecté"
-                : "Comptes détectés dans des fuites de données"}
+              {breachedPasswordsList.length === 0
+                ? "Aucun mot de passe compromis"
+                : "Mots de passe trouvés dans des fuites de données"}
             </p>
           </CardContent>
         </Card>
@@ -119,7 +220,11 @@ export function SecurityDashboard() {
         <Card className="md:col-span-4">
           <CardHeader>
             <CardTitle>Analyse de sécurité</CardTitle>
-            <CardDescription>Dernière analyse: {lastScan}</CardDescription>
+            <CardDescription>
+              {lastScan 
+                ? `Dernière analyse: ${new Date(lastScan).toLocaleString('fr-FR')}`
+                : "Aucune analyse effectuée"}
+            </CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
             <Tabs defaultValue="weak">
@@ -130,7 +235,7 @@ export function SecurityDashboard() {
                 <TabsTrigger value="breached">Compromis</TabsTrigger>
               </TabsList>
               <TabsContent value="weak" className="space-y-4 pt-4">
-                {weakPasswords.length === 0 ? (
+                {weakPasswordsList.length === 0 ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="text-center">
                       <CheckCircle2 className="mx-auto h-8 w-8 text-green-500" />
@@ -139,7 +244,7 @@ export function SecurityDashboard() {
                     </div>
                   </div>
                 ) : (
-                  weakPasswords.map((password) => (
+                  weakPasswordsList.map((password) => (
                     <div key={password.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
                         <div className="font-medium">{password.title}</div>
@@ -151,7 +256,7 @@ export function SecurityDashboard() {
                 )}
               </TabsContent>
               <TabsContent value="reused" className="space-y-4 pt-4">
-                {reusedPasswords.length === 0 ? (
+                {reusedPasswordsList.length === 0 ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="text-center">
                       <CheckCircle2 className="mx-auto h-8 w-8 text-green-500" />
@@ -160,7 +265,7 @@ export function SecurityDashboard() {
                     </div>
                   </div>
                 ) : (
-                  reusedPasswords.map((password) => (
+                  reusedPasswordsList.map((password) => (
                     <div key={password.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
                         <div className="font-medium">{password.title}</div>
@@ -172,22 +277,25 @@ export function SecurityDashboard() {
                 )}
               </TabsContent>
               <TabsContent value="old" className="space-y-4 pt-4">
-                {oldPasswords.length === 0 ? (
+                {oldPasswordsList.length === 0 ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="text-center">
                       <CheckCircle2 className="mx-auto h-8 w-8 text-green-500" />
-                      <h3 className="mt-2 text-sm font-medium">Tous vos mots de passe sont récents</h3>
+                      <h3 className="mt-2 text-sm font-medium">Aucun mot de passe ancien</h3>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Vous mettez régulièrement à jour vos mots de passe.
+                        Tous vos mots de passe ont été mis à jour récemment.
                       </p>
                     </div>
                   </div>
                 ) : (
-                  oldPasswords.map((password) => (
+                  oldPasswordsList.map((password) => (
                     <div key={password.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
                         <div className="font-medium">{password.title}</div>
-                        <div className="text-sm text-muted-foreground">Mis à jour: {password.lastUpdated}</div>
+                        <div className="text-sm text-muted-foreground">{password.username}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Dernière mise à jour: {password.lastUpdated}
+                        </div>
                       </div>
                       <Button size="sm">Mettre à jour</Button>
                     </div>
@@ -195,29 +303,27 @@ export function SecurityDashboard() {
                 )}
               </TabsContent>
               <TabsContent value="breached" className="space-y-4 pt-4">
-                {breachedAccounts.length === 0 ? (
+                {breachedPasswordsList.length === 0 ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="text-center">
                       <CheckCircle2 className="mx-auto h-8 w-8 text-green-500" />
-                      <h3 className="mt-2 text-sm font-medium">Aucun compte compromis</h3>
+                      <h3 className="mt-2 text-sm font-medium">Aucun mot de passe compromis</h3>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Vos comptes n'ont pas été détectés dans des fuites de données.
+                        Aucun de vos mots de passe n'a été trouvé dans les fuites de données connues.
                       </p>
                     </div>
                   </div>
                 ) : (
-                  breachedAccounts.map((account) => (
-                    <div key={account.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  breachedPasswordsList.map((password) => (
+                    <div key={password.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
-                        <div className="font-medium">{account.title}</div>
-                        <div className="text-sm text-muted-foreground">Fuite détectée: {account.breachDate}</div>
+                        <div className="font-medium">{password.title}</div>
+                        <div className="text-sm text-muted-foreground">{password.username}</div>
+                        <div className="text-xs text-red-500">
+                          Ce mot de passe a été compromis dans une fuite de données
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={account.severity === "high" ? "destructive" : "outline"}>
-                          {account.severity === "high" ? "Critique" : "Moyen"}
-                        </Badge>
-                        <Button size="sm">Sécuriser</Button>
-                      </div>
+                      <Button size="sm" variant="destructive">Changer immédiatement</Button>
                     </div>
                   ))
                 )}
@@ -225,9 +331,14 @@ export function SecurityDashboard() {
             </Tabs>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" className="w-full">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Lancer une analyse complète
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={analyzeSecurity}
+              disabled={isAnalyzing}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
+              {isAnalyzing ? 'Analyse en cours...' : 'Lancer une analyse complète'}
             </Button>
           </CardFooter>
         </Card>
