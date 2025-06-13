@@ -5,10 +5,10 @@ import { ChevronRight, ChevronDown, Folder, FolderOpen, Plus, Users } from "luci
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import type { FolderItem } from "@/components/password-manager"
+import type { Folder } from "@/types/folder"
 
 interface FolderTreeProps {
-  folders: FolderItem[]
+  folders: Folder[]
   selectedFolderId: string | null
   onSelectFolder: (folderId: string | null) => void
   onAddFolder: (name: string, parentId: string | null) => void
@@ -38,7 +38,7 @@ export function FolderTree({ folders, selectedFolderId, onSelectFolder, onAddFol
     }
   }
 
-  const renderFolder = (folder: FolderItem, level = 0) => {
+  const renderFolder = (folder: Folder, level = 0) => {
     const isExpanded = expandedFolders[folder.id]
     const isSelected = selectedFolderId === folder.id
     const childFolders = folders.filter((f) => f.parentId === folder.id)
