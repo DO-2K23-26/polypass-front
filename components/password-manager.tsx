@@ -39,95 +39,13 @@ export interface PasswordEntry {
   old?: boolean
 }
 
-const initialPasswords: PasswordEntry[] = [
-  {
-    id: "1",
-    title: "Gmail",
-    website: "gmail.com",
-    username: "user@example.com",
-    password: "••••••••••••",
-    strength: "strong",
-    lastUpdated: "2023-12-01",
-    folderId: "personal",
-    tags: ["Important", "Email"],
-    notes: "Compte email principal",
-    customFields: [{ label: "Téléphone de récupération", value: "+33612345678", type: "text" }],
-  },
-  {
-    id: "2",
-    title: "GitHub",
-    website: "github.com",
-    username: "devuser",
-    password: "••••••••",
-    strength: "medium",
-    lastUpdated: "2023-11-15",
-    folderId: "work-dev",
-    tags: ["Développement"],
-    reused: true,
-  },
-  {
-    id: "3",
-    title: "Netflix",
-    website: "netflix.com",
-    username: "moviefan",
-    password: "•••••••••",
-    strength: "weak",
-    lastUpdated: "2023-10-20",
-    folderId: "entertainment",
-    tags: ["Streaming", "Partagé"],
-    breached: true,
-  },
-  {
-    id: "4",
-    title: "Amazon",
-    website: "amazon.com",
-    username: "shopper123",
-    password: "•••••••••••",
-    strength: "strong",
-    lastUpdated: "2023-09-05",
-    folderId: "shopping",
-    tags: ["Shopping"],
-    old: true,
-  },
-  {
-    id: "5",
-    title: "Banque Populaire",
-    website: "banquepopulaire.fr",
-    username: "client123",
-    password: "••••••••••••••",
-    strength: "strong",
-    lastUpdated: "2023-11-28",
-    folderId: "finance-banking",
-    tags: ["Banque", "Important"],
-    customFields: [
-      { label: "Numéro de compte", value: "FR76 1234 5678 9012 3456 7890 123", type: "text" },
-      { label: "Code secret", value: "••••", type: "password" },
-    ],
-  },
-  {
-    id: "6",
-    title: "Projet X",
-    website: "projet-x.com",
-    username: "team-member",
-    password: "•••••••••••",
-    strength: "strong",
-    lastUpdated: "2023-12-10",
-    folderId: "shared-team",
-    tags: ["Projet", "Équipe"],
-    // shared: true,
-  },
-]
-
-// const allTags = Array.from(new Set(initialPasswords.flatMap((p) => p.tags)))
-
-
 export function PasswordManager() {
-  const { folders, tags, credentials, loadings } = useOrganization()
+  const { folders, tags, credentials, selectedFolderId, loadings, updateSelectedFolderId, onCreateCredential } = useOrganization()
 
   const [passwords, setPasswords] = useState<PasswordEntry[]>([])
   // const [folders, setFolders] = useState<FolderItem[]>(initialFolders)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
+  // const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [searchFilter, setSearchFilter] = useState<"all" | "login" | "website" | "tags">("all")
@@ -210,23 +128,36 @@ export function PasswordManager() {
   // })
 
   // Add a new password
-  const handleAddPassword = (newPassword: Partial<PasswordEntry>) => {
-    const passwordEntry: PasswordEntry = {
-      id: (passwords.length + 1).toString(),
-      title: newPassword.title || "",
-      website: newPassword.website || "",
-      username: newPassword.username || "",
-      password: newPassword.password || "",
-      strength: newPassword.strength || "medium",
-      lastUpdated: new Date().toISOString().split("T")[0],
-      folderId: newPassword.folderId || "",
-      tags: newPassword.tags || [],
-      notes: newPassword.notes,
-      customFields: newPassword.customFields,
-      files: newPassword.files,
-    }
+  const handleAddPassword = (title: string, domaine: string | null, userIdentifier: string, password: string) => {
+    // const passwordEntry: PasswordEntry = {
+    //   id: (passwords.length + 1).toString(),
+    //   title: password.title || "",
+    //   website: password.website || "",
+    //   username: newPassword.username || "",
+    //   password: newPassword.password || "",
+    //   strength: newPassword.strength || "medium",
+    //   lastUpdated: new Date().toISOString().split("T")[0],
+    //   folderId: newPassword.folderId || "",
+    //   tags: newPassword.tags || [],
+    //   notes: newPassword.notes,
+    //   customFields: newPassword.customFields,
+    //   files: newPassword.files,
+    // }
 
-    setPasswords([...passwords, passwordEntry])
+    // setPasswords([...passwords, passwordEntry])
+
+    onCreateCredential(selectedFolderId || "", "password", {
+      title,
+      domain_name: domaine,
+      user_identifier: userIdentifier,
+      password,
+      custom_fields: {
+        additionalProp1: "",
+        additionalProp2: "",
+        additionalProp3: "",
+      },
+      note: ""
+    })
     setShowAddForm(false)
   }
 
@@ -371,7 +302,7 @@ export function PasswordManager() {
                   </span>
                 ))}
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedFolderId(null)}>
+              <Button variant="ghost" size="sm" onClick={() => updateSelectedFolderId(null)}>
                 Effacer le filtre
               </Button>
             </div>
@@ -418,6 +349,7 @@ export function PasswordManager() {
             <PasswordForm
               onAddPassword={handleAddPassword}
               folders={folders}
+              selectedFolderId={selectedFolderId}
               onAddFolder={handleAddFolder}
               onCancel={() => setShowAddForm(false)}
               allTags={tags.map((tag) => tag.name)}

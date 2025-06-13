@@ -26,14 +26,15 @@ import type { FolderItem } from "@/components/password-manager"
 import { Switch } from "@/components/ui/switch"
 
 interface PasswordFormProps {
-  onAddPassword: (password: any) => void
+  onAddPassword: (title: string, domaine: string | null, userIdentifier: string, password: string) => void
   folders: FolderItem[]
+  selectedFolderId?: string
   onAddFolder: (name: string, parentId: string | null) => void
   onCancel: () => void
   allTags: string[]
 }
 
-export function PasswordForm({ onAddPassword, folders, onAddFolder, onCancel, allTags }: PasswordFormProps) {
+export function PasswordForm({ onAddPassword, folders, selectedFolderId, onAddFolder, onCancel, allTags }: PasswordFormProps) {
   const [title, setTitle] = useState("")
   const [website, setWebsite] = useState("")
   const [username, setUsername] = useState("")
@@ -45,9 +46,8 @@ export function PasswordForm({ onAddPassword, folders, onAddFolder, onCancel, al
   const [passwordStrength, setPasswordStrength] = useState<"weak" | "medium" | "strong">("medium")
   const [copied, setCopied] = useState(false)
   const [folderId, setFolderId] = useState("")
-  const [showNewFolderInput, setShowNewFolderInput] = useState(false)
   const [newFolderName, setNewFolderName] = useState("")
-  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null)
+  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(selectedFolderId ?? null)
   const [tags, setTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState("")
   const [notes, setNotes] = useState("")
@@ -159,26 +159,25 @@ export function PasswordForm({ onAddPassword, folders, onAddFolder, onCancel, al
     setPasswordStrength(strength)
   }
 
-  const addTag = () => {
-    if (newTag && !tags.includes(newTag)) {
-      setTags([...tags, newTag])
-      setNewTag("")
-    }
-  }
+  // const addTag = () => {
+  //   if (newTag && !tags.includes(newTag)) {
+  //     setTags([...tags, newTag])
+  //     setNewTag("")
+  //   }
+  // }
 
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove))
-  }
+  // const removeTag = (tagToRemove: string) => {
+  //   setTags(tags.filter((tag) => tag !== tagToRemove))
+  // }
 
-  const handleAddFolder = () => {
-    if (newFolderName) {
-      onAddFolder(newFolderName, newFolderParentId)
-      const newId = newFolderName.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now().toString(36)
-      setFolderId(newId)
-      setNewFolderName("")
-      setShowNewFolderInput(false)
-    }
-  }
+  // const handleAddFolder = () => {
+  //   if (newFolderName) {
+  //     onAddFolder(newFolderName, newFolderParentId)
+  //     const newId = newFolderName.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now().toString(36)
+  //     setFolderId(newId)
+  //     setNewFolderName("")
+  //   }
+  // }
 
   const addCustomField = () => {
     if (newFieldLabel) {
@@ -208,31 +207,19 @@ export function PasswordForm({ onAddPassword, folders, onAddFolder, onCancel, al
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (title && username && password) {
-      onAddPassword({
-        title,
-        website,
-        username,
-        password,
-        strength: passwordStrength,
-        folderId,
-        tags,
-        notes,
-        customFields: customFields.length > 0 ? customFields : undefined,
-      })
+      // onAddPassword({
+      //   title,
+      //   website,
+      //   username,
+      //   password,
+      //   strength: passwordStrength,
+      //   folderId,
+      //   tags,
+      //   notes,
+      //   customFields: customFields.length > 0 ? customFields : undefined,
+      // })
+      onAddPassword(title, website, username, password)
     }
-  }
-
-  // Group folders by parent for the select dropdown
-  const getFolderGroups = () => {
-    const rootFolders = folders.filter((f) => f.parentId === null)
-
-    return rootFolders.map((rootFolder) => {
-      const children = folders.filter((f) => f.parentId === rootFolder.id)
-      return {
-        parent: rootFolder,
-        children,
-      }
-    })
   }
 
   // Get folder path for display
@@ -328,80 +315,25 @@ export function PasswordForm({ onAddPassword, folders, onAddFolder, onCancel, al
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="folder">Dossier</Label>
-                {showNewFolderInput ? (
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <Input
-                        id="newFolderName"
-                        placeholder="Nom du dossier"
-                        value={newFolderName}
-                        onChange={(e) => setNewFolderName(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button type="button" variant="outline" onClick={handleAddFolder} disabled={!newFolderName}>
-                        Ajouter
-                      </Button>
-                      <Button type="button" variant="ghost" onClick={() => setShowNewFolderInput(false)}>
-                        Annuler
-                      </Button>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="parentFolder">Dossier parent (Optionnel)</Label>
-                      <Select
-                        value={newFolderParentId || ""}
-                        onValueChange={(value) => setNewFolderParentId(value || null)}
-                      >
-                        <SelectTrigger id="parentFolder">
-                          <SelectValue placeholder="Sélectionner un dossier parent" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="root">Aucun parent (Niveau racine)</SelectItem>
-                          {folders.map((folder) => (
-                            <SelectItem key={folder.id} value={folder.id}>
-                              {getFolderPath(folder)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <Select value={folderId} onValueChange={setFolderId} className="flex-1">
-                      <SelectTrigger id="folder">
-                        <SelectValue placeholder="Sélectionner un dossier" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getFolderGroups().map((group) => (
-                          <SelectGroup key={group.parent.id}>
-                            <SelectLabel>{group.parent.name}</SelectLabel>
-                            <SelectItem value={group.parent.id}>{group.parent.name}</SelectItem>
-                            {group.children.map((child) => (
-                              <SelectItem key={child.id} value={child.id} className="pl-6">
-                                {child.name}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        ))}
-                        {folders
-                          .filter((f) => !f.parentId && !getFolderGroups().some((g) => g.parent.id === f.id))
-                          .map((folder) => (
-                            <SelectItem key={folder.id} value={folder.id}>
-                              {folder.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <Button type="button" variant="outline" onClick={() => setShowNewFolderInput(true)}>
-                      Nouveau
-                    </Button>
-                  </div>
-                )}
+                <Label htmlFor="parentFolder">Dossier</Label>
+                <Select
+                  value={newFolderParentId || ""}
+                  onValueChange={(value) => setNewFolderParentId(value || null)}
+                >
+                  <SelectTrigger id="parentFolder">
+                    <SelectValue placeholder="Sélectionner un dossier parent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {folders.map((folder) => (
+                      <SelectItem key={folder.id} value={folder.id}>
+                        {getFolderPath(folder)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label htmlFor="tags">Tags</Label>
                 <div className="flex gap-2">
                   <Input
@@ -457,7 +389,7 @@ export function PasswordForm({ onAddPassword, folders, onAddFolder, onCancel, al
                     ))}
                   </div>
                 )}
-              </div>
+              </div> */}
             </TabsContent>
 
             <TabsContent value="generator" className="space-y-4 pt-4">
@@ -613,7 +545,7 @@ export function PasswordForm({ onAddPassword, folders, onAddFolder, onCancel, al
                       passwordStrength === "strong"
                         ? "default"
                         : passwordStrength === "medium"
-                          ? "warning"
+                          ? "default"
                           : "destructive"
                     }
                   >

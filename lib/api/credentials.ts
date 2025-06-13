@@ -76,3 +76,27 @@ export async function getCredentials(folderId: string, type: 'password' | 'card'
         throw error;
     }
 }
+
+export async function createCredential(folderId: string, type: string, credentialData: any): Promise<CardCredential | PasswordCredential | SSHKeyCredential> {
+    const baseUrl = process.env.NEXT_PUBLIC_ORGANIZATION_URL || 'http://localhost:3001';
+    
+    try {
+        const response = await fetch(`${baseUrl}/folders/${folderId}/credentials/${type}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(credentialData),
+        });
+    
+        if (!response.ok) {
+            throw new Error('Erreur lors de la création de l\'identifiant');
+        }
+    
+        const data: CardCredential | PasswordCredential | SSHKeyCredential = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Erreur lors de la création de l\'identifiant:', error);
+        throw error;
+    }
+} 

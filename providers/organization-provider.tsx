@@ -1,9 +1,9 @@
 'use client'
 
-import { getCredentials } from "@/lib/api/credentials";
+import { createCredential, getCredentials } from "@/lib/api/credentials";
 import { createFolder, getFolders } from "@/lib/api/folders";
 import { createTag, getTags } from "@/lib/api/tags";
-import { CardCredential, Credential, PasswordCredential, SSHKeyCredential } from "@/types/credential";
+import { CardCredential, PasswordCredential, SSHKeyCredential } from "@/types/credential";
 import { Folder } from "@/types/folder";
 import { Tag } from "@/types/tag";
 import { createContext, useEffect, useState } from "react";
@@ -20,6 +20,7 @@ export interface OrganizationProviderProps {
     onCreateTag: (tagName: string, color: string, folderId: string) => void;
     // onUpdateTag: (id: string, data: Partial<Tag>) => void;
     // onDeleteTag: (id: string) => void;
+    onCreateCredential: (folderId: string, type: string, credentialData: any) => void;
     updateSelectedFolderId: (folderId: string | null) => void;
     reloadData: () => void;
 }
@@ -44,6 +45,7 @@ const OrganizationContext = createContext<OrganizationProviderProps>({
     // onUpdateFolder: (id: string, data: Partial<Folder>) => {},
     // onDeleteFolder: (id: string) => {},
     onCreateTag: (tagName: string, color: string, folderId: string) => {},
+    onCreateCredential: (folderId: string, type: string, credentialData: any) => {},
     updateSelectedFolderId: (folderId: string | null) => {},
     reloadData: () => {},
 });
@@ -147,11 +149,20 @@ export const OrganizationProvider = ({ children }: any) => {
     const onCreateTag = async (tagName: string, color: string, folderId: string) => {
         try {
             const newTag = await createTag({ name: tagName, color, folder_id: folderId, created_by: "Baptiste" });
-            loadData();
+            loadTags();
         } catch (error) {
             console.error("Error creating tag:", error);
         }
     };
+
+    const onCreateCredential = async (folderId: string, type: string, credentialData: any) => {
+        try {
+            const newCredential = await createCredential(folderId, type, credentialData);
+            setCredentials((prev) => [...prev, newCredential]);
+        } catch (error) {
+            console.error("Error creating credential:", error);
+        }
+    }
 
     return (
         <OrganizationContext.Provider
@@ -165,6 +176,7 @@ export const OrganizationProvider = ({ children }: any) => {
                 // onUpdateFolder,
                 // onDeleteFolder,
                 onCreateTag,
+                onCreateCredential,
                 updateSelectedFolderId,
                 reloadData: loadData,
             }}
