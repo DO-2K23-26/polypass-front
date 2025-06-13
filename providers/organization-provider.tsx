@@ -1,6 +1,6 @@
 'use client'
 
-import { createCredential, getCredentials } from "@/lib/api/credentials";
+import { createCredential, getCredentials, getUserCredentials } from "@/lib/api/credentials";
 import { createFolder, getFolders } from "@/lib/api/folders";
 import { createTag, getTags } from "@/lib/api/tags";
 import { CardCredential, PasswordCredential, SSHKeyCredential } from "@/types/credential";
@@ -13,6 +13,7 @@ export interface OrganizationProviderProps {
     tags: Tag[];
     credentials: (CardCredential | PasswordCredential | SSHKeyCredential)[];
     selectedFolderId?: string;
+    credentialsFilter: 'all' | 'password' | 'card' | 'sshkey',
     loadings: OrganizationLoadings;
     onCreateFolder: (folderName: string, parentId: string | null) => void;
     // onUpdateFolder: (id: string, data: Partial<Folder>) => void;
@@ -22,7 +23,8 @@ export interface OrganizationProviderProps {
     // onDeleteTag: (id: string) => void;
     onCreateCredential: (folderId: string, type: string, credentialData: any) => void;
     updateSelectedFolderId: (folderId: string | null) => void;
-    reloadData: () => void;
+    setCredentialsFilter: (filter: 'all' | 'password' | 'card' | 'sshkey') => void;
+    reloadData: (credentialType: 'all' | 'password' | 'card' | 'sshkey', folderId?: string) => void;
 }
 
 export interface OrganizationLoadings {
@@ -36,6 +38,7 @@ const OrganizationContext = createContext<OrganizationProviderProps>({
     tags: [],
     credentials: [],
     selectedFolderId: undefined,
+    credentialsFilter: 'all',
     loadings: {
         foldersLoading: false,
         tagsLoading: false,
@@ -47,7 +50,8 @@ const OrganizationContext = createContext<OrganizationProviderProps>({
     onCreateTag: (tagName: string, color: string, folderId: string) => {},
     onCreateCredential: (folderId: string, type: string, credentialData: any) => {},
     updateSelectedFolderId: (folderId: string | null) => {},
-    reloadData: () => {},
+    setCredentialsFilter: (filter: 'all' | 'password' | 'card' | 'sshkey') => {},
+    reloadData: (credentialType: 'all' | 'password' | 'card' | 'sshkey', folderId?: string) => {},
 });
 
 export const OrganizationProvider = ({ children }: any) => {
@@ -55,6 +59,7 @@ export const OrganizationProvider = ({ children }: any) => {
     const [tags, setTags] = useState<Tag[]>([]);
     const [credentials, setCredentials] = useState<(CardCredential | PasswordCredential | SSHKeyCredential)[]>([]);
     const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>(undefined);
+    const [credentialsFilter, setCredentialsFilter] = useState<'all' | 'password' | 'card' | 'sshkey'>('all');
     const [loadings, setLoadings] = useState<OrganizationLoadings>({
         foldersLoading: false,
         tagsLoading: false,
@@ -85,25 +90,45 @@ export const OrganizationProvider = ({ children }: any) => {
         }
     }
 
-    const loadCredentials = async (folderId?: string) => {
+    const loadCredentials = async (type: 'all' | 'password' | 'card' | 'sshkey', folderId?: string) => {
         setLoadings((prev) => ({ ...prev, credentialsLoading: true }));
         try {
-            const credentials = await getCredentials(folderId ?? "8115a3f7-20cc-44d6-9e62-182eab3b8cd5", 'password');
-            setCredentials(credentials);
-            console.log("Credentials loaded:", credentials);
+            if (type === 'all') {
+                if (!folderId) {
+                    const credentials = await getUserCredentials("Baptiste");
+                    setCredentials(credentials);
+                } else {
+                    const credentials1 = await getCredentials(folderId, 'password');
+                    setCredentials(credentials1);
+                    const credentials2 = await getCredentials(folderId, 'card');
+                    setCredentials((prev) => [...prev, ...credentials2]);
+                    const credentials3 = await getCredentials(folderId, 'sshkey');
+                    setCredentials((prev) => [...prev, ...credentials3]);
+                }
+            }
+            else {
+                if (!folderId) {
+                    const credentials = await getUserCredentials("Baptiste", type);
+                    setCredentials(credentials);
+                } else {
+                    const credentials = await getCredentials(folderId, type);
+                    setCredentials(credentials);
+                }
+            }
         } catch (error) {
             console.error("Error loading credentials:", error);
+            console.log("credntial type:", type);
         } finally {
             setLoadings((prev) => ({ ...prev, credentialsLoading: false }));
         }
     }
     
-    const loadData = async (folderId?: string) => {
+    const loadData = async (credentialType: 'all' | 'password' | 'card' | 'sshkey', folderId?: string) => {
         loadFolders();
 
         loadTags();
 
-        loadCredentials(folderId);
+        loadCredentials(credentialType, folderId);
     }
 
     const updateSelectedFolderId = (folderId: string | null) => {
@@ -112,12 +137,12 @@ export const OrganizationProvider = ({ children }: any) => {
     }
 
     useEffect(() => {
-        loadData(selectedFolderId)
+        loadData(credentialsFilter, selectedFolderId)
     }, [])
 
     useEffect(() => {
-        loadCredentials(selectedFolderId);
-    }, [selectedFolderId]);
+        loadCredentials(credentialsFilter, selectedFolderId);
+    }, [selectedFolderId, credentialsFilter]);
 
     const onCreateFolder = async (folderName: string, parentId: string | null) => {
         try {
@@ -171,6 +196,7 @@ export const OrganizationProvider = ({ children }: any) => {
                 tags,
                 credentials,
                 selectedFolderId,
+                credentialsFilter,
                 loadings,
                 onCreateFolder,
                 // onUpdateFolder,
@@ -178,6 +204,7 @@ export const OrganizationProvider = ({ children }: any) => {
                 onCreateTag,
                 onCreateCredential,
                 updateSelectedFolderId,
+                setCredentialsFilter,
                 reloadData: loadData,
             }}
         >

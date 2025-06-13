@@ -40,7 +40,7 @@ export interface PasswordEntry {
 }
 
 export function PasswordManager() {
-  const { folders, tags, credentials, selectedFolderId, loadings, updateSelectedFolderId, onCreateCredential } = useOrganization()
+  const { folders, tags, credentials, selectedFolderId, credentialsFilter, updateSelectedFolderId, onCreateCredential, setCredentialsFilter } = useOrganization()
 
   const [passwords, setPasswords] = useState<PasswordEntry[]>([])
   // const [folders, setFolders] = useState<FolderItem[]>(initialFolders)
@@ -48,7 +48,6 @@ export function PasswordManager() {
   // const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showAddForm, setShowAddForm] = useState(false)
-  const [searchFilter, setSearchFilter] = useState<"all" | "login" | "website" | "tags">("all")
 
   // Function to get all child folder IDs recursively
   const getAllChildFolderIds = (folderId: string): string[] => {
@@ -273,19 +272,19 @@ export function PasswordManager() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Tabs defaultValue="all" onValueChange={(v) => setSearchFilter(v as any)}>
+              <Tabs defaultValue="all" onValueChange={(v) => setCredentialsFilter(v as any)}>
                 <TabsList className="h-9">
                   <TabsTrigger value="all" className="text-xs px-2">
                     Tout
                   </TabsTrigger>
-                  <TabsTrigger value="login" className="text-xs px-2">
-                    Login
+                  <TabsTrigger value="password" className="text-xs px-2">
+                    Mots de passe
                   </TabsTrigger>
-                  <TabsTrigger value="website" className="text-xs px-2">
-                    Site
+                  <TabsTrigger value="card" className="text-xs px-2">
+                    Cartes de crédit
                   </TabsTrigger>
-                  <TabsTrigger value="tags" className="text-xs px-2">
-                    Tags
+                  <TabsTrigger value="sshkey" className="text-xs px-2">
+                    Clés SSH
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
