@@ -1,27 +1,29 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ChevronRight, ChevronDown, Folder, FolderOpen, Plus, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import type { FolderItem } from "@/components/password-manager"
+import useOrganization from "@/hooks/use-organization"
 
-interface FolderTreeProps {
-  folders: FolderItem[]
-  selectedFolderId: string | null
-  onSelectFolder: (folderId: string | null) => void
-  onAddFolder: (name: string, parentId: string | null) => void
-  className?: string
-}
+export function FolderTree() {
+  const { folders, selectedFolderId, loadings, onCreateFolder, updateSelectedFolderId } = useOrganization()
 
-export function FolderTree({ folders, selectedFolderId, onSelectFolder, onAddFolder, className }: FolderTreeProps) {
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({})
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null)
   const [newFolderName, setNewFolderName] = useState("")
 
-  // Get root level folders
-  const rootFolders = folders.filter((folder) => folder.parentId === null)
+  const getRootFolders = () => {
+    return folders.filter((folder) => !folders.map(f => f.id).includes(folder.parentId ?? ''))
+  }
+
+  const [rootFolders, setRootFolders] = useState<FolderItem[]>(getRootFolders())
+
+  useEffect(() => {
+    setRootFolders(getRootFolders())
+  }, [folders])
 
   const toggleExpand = (folderId: string) => {
     setExpandedFolders((prev) => ({
@@ -32,9 +34,8 @@ export function FolderTree({ folders, selectedFolderId, onSelectFolder, onAddFol
 
   const handleAddFolder = () => {
     if (newFolderName.trim()) {
-      onAddFolder(newFolderName.trim(), newFolderParentId)
+      onCreateFolder(newFolderName.trim(), newFolderParentId)
       setNewFolderName("")
-      setNewFolderParentId(null)
     }
   }
 
@@ -60,7 +61,7 @@ export function FolderTree({ folders, selectedFolderId, onSelectFolder, onAddFol
           >
             {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
           </button>
-          <button type="button" className="flex items-center gap-2 flex-1" onClick={() => onSelectFolder(folder.id)}>
+          <button type="button" className="flex items-center gap-2 flex-1" onClick={() => updateSelectedFolderId(folder.id)}>
             {folder.shared ? (
               <Users className="h-4 w-4 text-blue-500" />
             ) : isExpanded ? (
@@ -70,16 +71,20 @@ export function FolderTree({ folders, selectedFolderId, onSelectFolder, onAddFol
             )}
             <span>{folder.name}</span>
           </button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100"
-            onClick={() => setNewFolderParentId(folder.id)}
-          >
-            <Plus className="h-3 w-3" />
-            <span className="sr-only">Ajouter un sous-dossier</span>
-          </Button>
+          {
+            level < 2 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100"
+                onClick={() => setNewFolderParentId(folder.id)}
+              >
+                <Plus className="h-3 w-3" />
+                <span className="sr-only">Ajouter un sous-dossier</span>
+              </Button>
+            )
+          }
         </div>
 
         {isExpanded && hasChildren && (
@@ -87,7 +92,7 @@ export function FolderTree({ folders, selectedFolderId, onSelectFolder, onAddFol
         )}
 
         {newFolderParentId === folder.id && (
-          <div className="flex items-center gap-2 mt-1 ml-8">
+          <div className="flex flex-col mt-1 ml-8">
             <Input
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
@@ -99,12 +104,14 @@ export function FolderTree({ folders, selectedFolderId, onSelectFolder, onAddFol
                 if (e.key === "Escape") setNewFolderParentId(null)
               }}
             />
-            <Button type="button" variant="outline" size="sm" className="h-7" onClick={handleAddFolder}>
-              Ajouter
-            </Button>
-            <Button type="button" variant="ghost" size="sm" className="h-7" onClick={() => setNewFolderParentId(null)}>
-              Annuler
-            </Button>
+            <div className="flex items-center gap-2 justify-between mt-1">
+              <Button type="button" variant="ghost" size="sm" className="h-7" onClick={() => setNewFolderParentId(null)}>
+                Annuler
+              </Button>
+              <Button type="button" variant="outline" size="sm" className="h-7" onClick={handleAddFolder}>
+                Ajouter
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -112,20 +119,24 @@ export function FolderTree({ folders, selectedFolderId, onSelectFolder, onAddFol
   }
 
   return (
-    <div className={cn("space-y-1", className)}>
+    <div className={cn("space-y-1", { 'flex flex-col justify-between h-[300px]': rootFolders.length === 0 })}>
       <button
         type="button"
         className={cn(
           "flex items-center gap-2 w-full py-1 px-2 rounded-md text-sm transition-colors",
           selectedFolderId === null ? "bg-primary text-primary-foreground" : "hover:bg-muted",
         )}
-        onClick={() => onSelectFolder(null)}
+        onClick={() => updateSelectedFolderId(null)}
       >
         <Folder className="h-4 w-4 text-muted-foreground" />
         <span>Tous les mots de passe</span>
       </button>
 
       {rootFolders.map((folder) => renderFolder(folder))}
+
+      {rootFolders.length === 0 && !loadings.foldersLoading && (
+        <p className="text-center text-muted-foreground">Aucun dossier trouvé</p>
+      )}
 
       {newFolderParentId === null && (
         <div className="flex items-center gap-2 mt-2">

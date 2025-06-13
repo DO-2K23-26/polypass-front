@@ -11,6 +11,7 @@ import { PasswordForm } from "@/components/password-form"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import useOrganization from "@/hooks/use-organization"
 
 // Types for our data model
 export interface FolderItem {
@@ -38,108 +39,15 @@ export interface PasswordEntry {
   old?: boolean
 }
 
-// Sample data
-const initialFolders: FolderItem[] = [
-  { id: "personal", name: "Personnel", parentId: null },
-  { id: "work", name: "Travail", parentId: null },
-  { id: "work-dev", name: "Développement", parentId: "work" },
-  { id: "entertainment", name: "Divertissement", parentId: null },
-  { id: "shopping", name: "Shopping", parentId: null },
-  { id: "finance", name: "Finance", parentId: null },
-  { id: "finance-banking", name: "Banque", parentId: "finance" },
-  { id: "shared", name: "Partagé", parentId: null, shared: true },
-  { id: "shared-team", name: "Équipe", parentId: "shared", shared: true },
-]
-
-const initialPasswords: PasswordEntry[] = [
-  {
-    id: "1",
-    title: "Gmail",
-    website: "gmail.com",
-    username: "user@example.com",
-    password: "••••••••••••",
-    strength: "strong",
-    lastUpdated: "2023-12-01",
-    folderId: "personal",
-    tags: ["Important", "Email"],
-    notes: "Compte email principal",
-    customFields: [{ label: "Téléphone de récupération", value: "+33612345678", type: "text" }],
-  },
-  {
-    id: "2",
-    title: "GitHub",
-    website: "github.com",
-    username: "devuser",
-    password: "••••••••",
-    strength: "medium",
-    lastUpdated: "2023-11-15",
-    folderId: "work-dev",
-    tags: ["Développement"],
-    reused: true,
-  },
-  {
-    id: "3",
-    title: "Netflix",
-    website: "netflix.com",
-    username: "moviefan",
-    password: "•••••••••",
-    strength: "weak",
-    lastUpdated: "2023-10-20",
-    folderId: "entertainment",
-    tags: ["Streaming", "Partagé"],
-    breached: true,
-  },
-  {
-    id: "4",
-    title: "Amazon",
-    website: "amazon.com",
-    username: "shopper123",
-    password: "•••••••••••",
-    strength: "strong",
-    lastUpdated: "2023-09-05",
-    folderId: "shopping",
-    tags: ["Shopping"],
-    old: true,
-  },
-  {
-    id: "5",
-    title: "Banque Populaire",
-    website: "banquepopulaire.fr",
-    username: "client123",
-    password: "••••••••••••••",
-    strength: "strong",
-    lastUpdated: "2023-11-28",
-    folderId: "finance-banking",
-    tags: ["Banque", "Important"],
-    customFields: [
-      { label: "Numéro de compte", value: "FR76 1234 5678 9012 3456 7890 123", type: "text" },
-      { label: "Code secret", value: "••••", type: "password" },
-    ],
-  },
-  {
-    id: "6",
-    title: "Projet X",
-    website: "projet-x.com",
-    username: "team-member",
-    password: "•••••••••••",
-    strength: "strong",
-    lastUpdated: "2023-12-10",
-    folderId: "shared-team",
-    tags: ["Projet", "Équipe"],
-    shared: true,
-  },
-]
-
-const allTags = Array.from(new Set(initialPasswords.flatMap((p) => p.tags)))
-
 export function PasswordManager() {
-  const [passwords, setPasswords] = useState<PasswordEntry[]>(initialPasswords)
-  const [folders, setFolders] = useState<FolderItem[]>(initialFolders)
+  const { folders, tags, credentials, selectedFolderId, credentialsFilter, updateSelectedFolderId, onCreateCredential, setCredentialsFilter } = useOrganization()
+
+  const [passwords, setPasswords] = useState<PasswordEntry[]>([])
+  // const [folders, setFolders] = useState<FolderItem[]>(initialFolders)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
+  // const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showAddForm, setShowAddForm] = useState(false)
-  const [searchFilter, setSearchFilter] = useState<"all" | "login" | "website" | "tags">("all")
 
   // Function to get all child folder IDs recursively
   const getAllChildFolderIds = (folderId: string): string[] => {
@@ -166,73 +74,96 @@ export function PasswordManager() {
   }
 
   // Filter passwords based on search query, selected folder and tags
-  const filteredPasswords = passwords.filter((password) => {
-    // Search filter
-    let matchesSearch = true
-    if (searchQuery) {
-      switch (searchFilter) {
-        case "login":
-          matchesSearch = password.username.toLowerCase().includes(searchQuery.toLowerCase())
-          break
-        case "website":
-          matchesSearch =
-            password.website.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            password.title.toLowerCase().includes(searchQuery.toLowerCase())
-          break
-        case "tags":
-          matchesSearch = password.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-          break
-        case "all":
-        default:
-          matchesSearch =
-            password.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            password.website.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            password.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            password.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      }
-    }
+  // const filteredPasswords = credentials.filter((password) => {
+  //   // Search filter
+  //   let matchesSearch = true
+  //   if (searchQuery) {
+  //     switch (searchFilter) {
+  //       case "login":
+  //         if ("password" in password && typeof password.password === "string") {
+  //           matchesSearch = password.user_identifier.toLowerCase().includes(searchQuery.toLowerCase())
+  //         } else {
+  //           matchesSearch = false
+  //         }
+  //         break
+  //       case "website":
+  //         if ("website" in password && typeof password.website === "string") {
+  //           matchesSearch = password.website.toLowerCase().includes(searchQuery.toLowerCase())
+  //         } else {
+  //           matchesSearch = false
+  //         }
+  //         // matchesSearch =
+  //         //   password.website.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //         //   password.title.toLowerCase().includes(searchQuery.toLowerCase())
+  //         break
+  //       case "tags":
+          
+  //         matchesSearch = password.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  //         break
+  //       case "all":
+  //       default:
+  //         matchesSearch =
+  //           password.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //           password.website.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //           password.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //           password.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  //     }
+  //   }
 
-    // Folder filter
-    let matchesFolder = true
-    if (selectedFolderId) {
-      const folderIds = [selectedFolderId, ...getAllChildFolderIds(selectedFolderId)]
-      matchesFolder = folderIds.includes(password.folderId)
-    }
+  //   // Folder filter
+  //   let matchesFolder = true
+  //   if (selectedFolderId) {
+  //     const folderIds = [selectedFolderId, ...getAllChildFolderIds(selectedFolderId)]
+  //     matchesFolder = folderIds.includes(password.folderId)
+  //   }
 
-    // Tags filter
-    let matchesTags = true
-    if (selectedTags.length > 0) {
-      matchesTags = selectedTags.every((tag) => password.tags.includes(tag))
-    }
+  //   // Tags filter
+  //   let matchesTags = true
+  //   if (selectedTags.length > 0) {
+  //     matchesTags = selectedTags.every((tag) => password.tags.includes(tag))
+  //   }
 
-    return matchesSearch && matchesFolder && matchesTags
-  })
+  //   return matchesSearch && matchesFolder && matchesTags
+  // })
 
   // Add a new password
-  const handleAddPassword = (newPassword: Partial<PasswordEntry>) => {
-    const passwordEntry: PasswordEntry = {
-      id: (passwords.length + 1).toString(),
-      title: newPassword.title || "",
-      website: newPassword.website || "",
-      username: newPassword.username || "",
-      password: newPassword.password || "",
-      strength: newPassword.strength || "medium",
-      lastUpdated: new Date().toISOString().split("T")[0],
-      folderId: newPassword.folderId || "",
-      tags: newPassword.tags || [],
-      notes: newPassword.notes,
-      customFields: newPassword.customFields,
-      files: newPassword.files,
-    }
+  const handleAddPassword = (title: string, domaine: string | null, userIdentifier: string, password: string, folderId: string) => {
+    // const passwordEntry: PasswordEntry = {
+    //   id: (passwords.length + 1).toString(),
+    //   title: password.title || "",
+    //   website: password.website || "",
+    //   username: newPassword.username || "",
+    //   password: newPassword.password || "",
+    //   strength: newPassword.strength || "medium",
+    //   lastUpdated: new Date().toISOString().split("T")[0],
+    //   folderId: newPassword.folderId || "",
+    //   tags: newPassword.tags || [],
+    //   notes: newPassword.notes,
+    //   customFields: newPassword.customFields,
+    //   files: newPassword.files,
+    // }
 
-    setPasswords([...passwords, passwordEntry])
+    // setPasswords([...passwords, passwordEntry])
+
+    onCreateCredential(folderId || "", "password", {
+      title,
+      domain_name: domaine,
+      user_identifier: userIdentifier,
+      password,
+      custom_fields: {
+        additionalProp1: "",
+        additionalProp2: "",
+        additionalProp3: "",
+      },
+      note: ""
+    })
     setShowAddForm(false)
   }
 
   // Add a new folder
   const handleAddFolder = (name: string, parentId: string | null) => {
-    const newId = name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now().toString(36)
-    setFolders([...folders, { id: newId, name, parentId }])
+    // const newId = name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now().toString(36)
+    // setFolders([...folders, { id: newId, name, parentId }])
   }
 
   // Toggle tag selection
@@ -267,12 +198,7 @@ export function PasswordManager() {
             </CardHeader>
             <CardContent className="px-4 py-2">
               <ScrollArea className="h-[300px]">
-                <FolderTree
-                  folders={folders}
-                  selectedFolderId={selectedFolderId}
-                  onSelectFolder={setSelectedFolderId}
-                  onAddFolder={handleAddFolder}
-                />
+                <FolderTree />
               </ScrollArea>
             </CardContent>
           </Card>
@@ -283,14 +209,14 @@ export function PasswordManager() {
             </CardHeader>
             <CardContent className="p-4">
               <div className="flex flex-wrap gap-2">
-                {allTags.map((tag) => (
+                {tags.map((tag) => (
                   <Badge
-                    key={tag}
-                    variant={selectedTags.includes(tag) ? "default" : "outline"}
+                    key={tag.id}
+                    variant={selectedTags.includes(tag.id) || true ? "default" : "outline"}
                     className="cursor-pointer"
-                    onClick={() => toggleTag(tag)}
+                    // onClick={() => toggleTag(tag)}
                   >
-                    {tag}
+                    {tag.name}
                   </Badge>
                 ))}
               </div>
@@ -346,19 +272,19 @@ export function PasswordManager() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Tabs defaultValue="all" onValueChange={(v) => setSearchFilter(v as any)}>
+              <Tabs defaultValue="all" onValueChange={(v) => setCredentialsFilter(v as any)}>
                 <TabsList className="h-9">
                   <TabsTrigger value="all" className="text-xs px-2">
                     Tout
                   </TabsTrigger>
-                  <TabsTrigger value="login" className="text-xs px-2">
-                    Login
+                  <TabsTrigger value="password" className="text-xs px-2">
+                    Mots de passe
                   </TabsTrigger>
-                  <TabsTrigger value="website" className="text-xs px-2">
-                    Site
+                  <TabsTrigger value="card" className="text-xs px-2">
+                    Cartes de crédit
                   </TabsTrigger>
-                  <TabsTrigger value="tags" className="text-xs px-2">
-                    Tags
+                  <TabsTrigger value="sshkey" className="text-xs px-2">
+                    Clés SSH
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -375,7 +301,7 @@ export function PasswordManager() {
                   </span>
                 ))}
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedFolderId(null)}>
+              <Button variant="ghost" size="sm" onClick={() => updateSelectedFolderId(null)}>
                 Effacer le filtre
               </Button>
             </div>
@@ -422,12 +348,13 @@ export function PasswordManager() {
             <PasswordForm
               onAddPassword={handleAddPassword}
               folders={folders}
+              selectedFolderId={selectedFolderId}
               onAddFolder={handleAddFolder}
               onCancel={() => setShowAddForm(false)}
-              allTags={allTags}
+              allTags={tags.map((tag) => tag.name)}
             />
           ) : (
-            <PasswordList passwords={filteredPasswords} folders={folders} />
+            <PasswordList passwords={credentials} folders={folders} />
           )}
         </div>
       </div>
