@@ -26,7 +26,7 @@ import type { FolderItem } from "@/components/password-manager"
 import { Switch } from "@/components/ui/switch"
 
 interface PasswordFormProps {
-  onAddPassword: (title: string, domaine: string | null, userIdentifier: string, password: string) => void
+  onAddPassword: (title: string, domaine: string | null, userIdentifier: string, password: string, folderId: string) => void
   folders: FolderItem[]
   selectedFolderId?: string
   onAddFolder: (name: string, parentId: string | null) => void
@@ -218,7 +218,7 @@ export function PasswordForm({ onAddPassword, folders, selectedFolderId, onAddFo
       //   notes,
       //   customFields: customFields.length > 0 ? customFields : undefined,
       // })
-      onAddPassword(title, website, username, password)
+      onAddPassword(title, website, username, password, newFolderParentId || selectedFolderId || "")
     }
   }
 

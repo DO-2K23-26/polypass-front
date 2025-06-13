@@ -127,7 +127,7 @@ export function PasswordManager() {
   // })
 
   // Add a new password
-  const handleAddPassword = (title: string, domaine: string | null, userIdentifier: string, password: string) => {
+  const handleAddPassword = (title: string, domaine: string | null, userIdentifier: string, password: string, folderId: string) => {
     // const passwordEntry: PasswordEntry = {
     //   id: (passwords.length + 1).toString(),
     //   title: password.title || "",
@@ -145,7 +145,7 @@ export function PasswordManager() {
 
     // setPasswords([...passwords, passwordEntry])
 
-    onCreateCredential(selectedFolderId || "", "password", {
+    onCreateCredential(folderId || "", "password", {
       title,
       domain_name: domaine,
       user_identifier: userIdentifier,
