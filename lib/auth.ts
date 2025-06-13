@@ -13,8 +13,10 @@ interface OIDCTokens {
 
 interface AuthState {
   accessToken: string | null
+  nickname: string | null
   isAuthenticated: boolean
   setTokens: (tokens: OIDCTokens) => void
+  setNickname: (nickname: string) => void
   clearTokens: () => void
   refreshAccessToken: () => Promise<boolean>
 }
@@ -25,6 +27,7 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       accessToken: null,
       isAuthenticated: false,
+      nickname: null,
 
       setTokens: (tokens: OIDCTokens) => {
         // Stocker l'access token dans le state
@@ -37,6 +40,10 @@ export const useAuthStore = create<AuthState>()(
         if (typeof window !== 'undefined') {
           localStorage.setItem('refresh_token', tokens.refresh_token)
         }
+      },
+
+      setNickname: (nickname: string) => {
+        set({ nickname })
       },
 
       clearTokens: () => {
@@ -188,6 +195,22 @@ export const exchangeCodeForTokens = async (code: string, state: string): Promis
     const tokens: OIDCTokens = await response.json()
     useAuthStore.getState().setTokens(tokens)
 
+    const userinfoEndpoint = `${oidcUrl}/realms/master/protocol/openid-connect/userinfo`
+    const userinfoResponse = await fetch(userinfoEndpoint, {
+      headers: {
+        Authorization: `Bearer ${tokens.access_token}`,
+      },
+    })
+    if (userinfoResponse.ok) {
+      const userinfo = await userinfoResponse.json()
+      if (userinfo.preferred_username) {
+        useAuthStore.getState().setNickname(userinfo.preferred_username)
+      }
+    } else {
+      console.warn('Impossible de récupérer le userinfo:', userinfoResponse.status)
+    }
+
+    
     // Nettoyer le sessionStorage
     sessionStorage.removeItem('oidc_state')
     sessionStorage.removeItem('oidc_code_verifier')
